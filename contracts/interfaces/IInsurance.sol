@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-struct Insurance {
+struct UserInsurance {
     address user;
     uint256 stakedRaw;
     uint256 repaidRaw;
@@ -12,10 +12,8 @@ struct Insurance {
 interface IInsurance {
     function stakeRaw(uint256 lockTime, uint256 amount) external returns (bytes32 insId);
     function unstakeRaw(bytes32 insId) external; // cancel all insurance
-    function compensate(bytes32 insId, uint256 amount) external view;
-    function setInsuranceRate(uint256 amount) external;
-    function insuranceRate() external view returns (uint256);
-    function userInsurance(address user) external view returns (uint256);
-    function insurances(bytes32 insId) external view returns (Insurance memory);
+    function compensate(bytes32 insId, uint256 amount) external;
+    function userInsurances(address user) external view returns (uint256);
+    function insurances(bytes32 insId) external view returns (UserInsurance memory);
     function availableCompensation(bytes32 insId) external view returns (uint256);
 }
