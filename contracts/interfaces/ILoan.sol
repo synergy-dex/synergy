@@ -8,7 +8,7 @@ interface ILoan {
     function withdraw(bytes32 borrowId, uint256 amount) external; // withdraw rUSD
     function collateralRatio(bytes32 borrowId) external view returns (uint256);
     function minCollateralRatio(address syntAddress) external view returns (uint256);
-    function totalShort(address syntAddress) external view returns (uint256);
+    function totalShorts(address syntAddress) external view returns (uint256);
     function setMinCollateralRatio(address syntAddress, uint256 newRatio) external;
     function liquidate(bytes32 borrowId, uint256 amount) external;
 }

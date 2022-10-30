@@ -10,8 +10,9 @@ contract Insurance is Ownable {
     event RemovedInsurance(address indexed user, bytes32 indexed insId);
     event Compensated(address indexed user, bytes32 indexed insId, uint256 amount);
 
-    IRaw public raw; // RAW token contract
-    address public synergy; // Synergy contract address
+    IRaw public immutable raw; // RAW token contract
+    address public immutable synergy; // Synergy contract address
+    
     uint256 public maxLockTime; // after this time compensation = 100%. If 0 => compensations are turned off
     uint256 public minLockTime; // min insurance lock time
     mapping(bytes32 => UserInsurance) public insurances; // every insurance has unique id
