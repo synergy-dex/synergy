@@ -2,23 +2,26 @@
 pragma solidity ^0.8.9;
 
 import "./interfaces/ISynt.sol";
+import "./interfaces/IOracle.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Synter is the contract to operate with different types of synth (create, mint, burn, etc.)
  */
 contract Synter is Ownable {
-    address public immutable rUsd;
-    address[] public syntList;
-    mapping(address => uint256) public syntIds;
-    address public immutable synergy;
+    address public immutable rUsd; // rUSD address
+    address[] public syntList; // list of all synt addresses
+    mapping(address => uint256) public syntIds; // ref from synt address to uinique ids
+    address public immutable synergy; // synergy contract (Synergy.sol)
+    IOracle public oracle; // price oracle (Oracle.sol)
 
     /**
      * @param _rUsdAddress rUSD should always exist
      */
-    constructor(address _rUsdAddress, address _synergyAddress) {
+    constructor(address _rUsdAddress, address _synergyAddress, address _oracle) {
         rUsd = _rUsdAddress;
         synergy = _synergyAddress;
+        oracle = IOracle(_oracle);
     }
 
     /* ================= SYNERGY FUNCTIONS ================= */
@@ -61,7 +64,17 @@ contract Synter is Ownable {
      * @param _amountFrom amount to spend
      */
     function swapFrom(address _fromSynt, address _toSynt, uint256 _amountFrom) external {
-        // @todo 
+        require(syntIds[_fromSynt] != 0, "First synt does not exist");
+        require(syntIds[_toSynt] != 0, "Second synt does not exist");
+        require(_amountFrom > 0, "Amount cannot be zero");
+
+        (uint256 fromPrice_, uint8 fromDecimals_) =  oracle.getSyntPrice(_fromSynt);
+        (uint256 toPrice_, uint8 toDecimals_) =  oracle.getSyntPrice(_toSynt);
+
+        uint256 amountTo_ = (fromPrice_ * _amountFrom * toDecimals_) / (toPrice_ * fromDecimals_);
+
+        ISynt(_fromSynt).burnFrom(msg.sender, _amountFrom);
+        ISynt(_toSynt).mint(msg.sender, amountTo_);
     }
 
     /**
@@ -71,7 +84,17 @@ contract Synter is Ownable {
      * @param _amountTo amount to get
      */
     function swapTo(address _fromSynt, address _toSynt, uint256 _amountTo) external {
-        // @todo
+        require(syntIds[_fromSynt] != 0, "First synt does not exist");
+        require(syntIds[_toSynt] != 0, "Second synt does not exist");
+        require(_amountTo > 0, "Amount cannot be zero");
+
+        (uint256 fromPrice_, uint8 fromDecimals_) =  oracle.getSyntPrice(_fromSynt);
+        (uint256 toPrice_, uint8 toDecimals_) =  oracle.getSyntPrice(_toSynt);
+
+        uint256 amountFrom_ = (toPrice_ * _amountTo * fromDecimals_) / (fromPrice_ * toDecimals_);
+
+        ISynt(_fromSynt).burnFrom(msg.sender, amountFrom_);
+        ISynt(_toSynt).mint(msg.sender, _amountTo);    
     }
 
     /* ================= PUBLIC FUNCTIONS ================= */
