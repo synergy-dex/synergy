@@ -18,11 +18,17 @@ interface ILoan {
     function deposit(bytes32 borrowId, uint256 amount) external; // add rUSD to collateral to escape liquidation
     function repay(bytes32 borrowId, uint256 amount) external;
     function withdraw(bytes32 borrowId, uint256 amount) external; // withdraw rUSD
-    function collateralRatio(bytes32 borrowId) external view returns (uint256);
-    function minCollateralRatio(address syntAddress) external view returns (uint256);
+    function collateralRatio(bytes32 borrowId) external view returns (uint32);
+    function minCollateralRatio() external view returns (uint32);
+    function liquidationCollateralRatio() external view returns (uint32);
+    function liquidationPenalty() external view returns (uint32);
+    function treasuryFee() external view returns (uint32);
     function totalShorts(address syntAddress) external view returns (uint256);
     function totalLongs(address syntAddress) external view returns (uint256);
     function shortsEnabled(address syntAddress) external view returns (bool);
-    function setMinCollateralRatio(uint256 newRatio) external;
-    function liquidate(bytes32 borrowId, uint256 amount) external;
+    function setMinCollateralRatio(uint32 _minCollateralRatio) external;
+    function setLiquidationCollateralRatio(uint32 _liquidationCollateralRatio) external;
+    function setLiquidationPenalty(uint32 _liquidationPenalty) external;
+    function setTreasuryFee(uint32 _treasuryFee) external;
+    function liquidate(bytes32 borrowId) external;
 }
