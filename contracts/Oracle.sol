@@ -16,18 +16,17 @@ contract Oracle is Ownable {
     constructor(address _rUsd) {
         require(_rUsd != address(0), "rUSD cannot be zero address");
         rUsd = _rUsd;
-    } 
+    }
 
-    function getSyntPrice(address _syntAddress) external view returns(uint256, uint8) {
+    function getSyntPrice(address _syntAddress) external view returns (uint256, uint8) {
         if (_syntAddress == rUsd) {
-            return (RUSD_PRICE, 18); 
+            return (RUSD_PRICE, 18);
         } else {
             require(address(chainlinkPriceFeeds[_syntAddress]) != address(0), "Price feed is not set");
-            (,int256 price_,,,) = chainlinkPriceFeeds[_syntAddress].latestRoundData();
+            (, int256 price_,,,) = chainlinkPriceFeeds[_syntAddress].latestRoundData();
             uint8 decimals_ = chainlinkPriceFeeds[_syntAddress].decimals();
             return (uint256(price_), decimals_);
         }
-
     }
 
     function changeSyntFeed(address _syntAddress, address _priceFeed) external onlyOwner {

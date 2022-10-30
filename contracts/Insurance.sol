@@ -12,7 +12,7 @@ contract Insurance is Ownable {
 
     IRaw public immutable raw; // RAW token contract
     address public immutable synergy; // Synergy contract address
-    
+
     uint256 public maxLockTime; // after this time compensation = 100%. If 0 => compensations are turned off
     uint256 public minLockTime; // min insurance lock time
     mapping(bytes32 => UserInsurance) public insurances; // every insurance has unique id
@@ -23,7 +23,9 @@ contract Insurance is Ownable {
         maxLockTime = _maxLockTime;
         synergy = _synergy;
     }
-    
+
+    /* ================= USER FUNCTIONS ================= */
+
     /**
      * @notice stake RAW tokens to insure against global debt losses
      * @param _lockTime time to lock the insurance
@@ -37,7 +39,7 @@ contract Insurance is Ownable {
         bool success_ = raw.transferFrom(msg.sender, address(this), _amount);
         require(success_, "Cannot transfer RAW token");
 
-        insId_ = keccak256(abi.encode(msg.sender, msg.data, block.number));
+        insId_ = keccak256(abi.encode(msg.sender, msg.data, block.number, userInsurances[msg.sender].length));
         require(insurances[insId_].user == address(0), "Cannot duplicate insurances");
 
         insurances[insId_] = UserInsurance({
@@ -60,12 +62,14 @@ contract Insurance is Ownable {
     function unstakeRaw(bytes32 _insId) external {
         require(insurances[_insId].user == msg.sender, "Wrong user");
         require(getUnlockTime(_insId) <= block.timestamp, "Insurance is locked up");
-        
+
         raw.transfer(msg.sender, insurances[_insId].stakedRaw);
         delete insurances[_insId];
 
         emit RemovedInsurance(msg.sender, _insId);
     }
+
+    /* ================= SYNERGY FUNCTIONS ================= */
 
     /**
      * @notice Function to mint compensation
@@ -87,12 +91,14 @@ contract Insurance is Ownable {
         emit Compensated(insur.user, _insId, _amount);
     }
 
+    /* ================= PUBLIC FUNCTIONS ================= */
+
     /**
      * @notice Get insurance deposit unlock time
      * @param _insId unique insurance id
      * @return unlock timestamp
      */
-    function getUnlockTime(bytes32 _insId) public view returns(uint256) {
+    function getUnlockTime(bytes32 _insId) public view returns (uint256) {
         return insurances[_insId].lockTime - insurances[_insId].startTime;
     }
 
@@ -101,9 +107,10 @@ contract Insurance is Ownable {
      * @param _insId unique insurance id
      * @return amount of RAW
      */
-    function availableCompensation(bytes32 _insId) public view returns(uint256) {
-
-        if (maxLockTime == 0) return 0; // compensations are turned off
+    function availableCompensation(bytes32 _insId) public view returns (uint256) {
+        if (maxLockTime == 0) {
+            return 0;
+        } // compensations are turned off
 
         UserInsurance storage insur = insurances[_insId];
 
@@ -114,7 +121,7 @@ contract Insurance is Ownable {
             totalCompensation_ = (insur.stakedRaw * insur.lockTime) / maxLockTime;
         }
 
-        return totalCompensation_ == 0 ? 0: totalCompensation_ - insur.repaidRaw;
+        return totalCompensation_ == 0 ? 0 : totalCompensation_ - insur.repaidRaw;
     }
 
     /* ================= OWNER FUNCTIONS ================= */
@@ -126,5 +133,4 @@ contract Insurance is Ownable {
     function setMinLockTime(uint256 _newTime) external onlyOwner {
         minLockTime = _newTime;
     }
-
 }

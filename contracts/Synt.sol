@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract Synt is ERC20 {
-    address public immutable synter; // address of the Synter contract 
+    address public immutable synter; // address of the Synter contract
     uint256 public maxSupply;
 
     constructor(string memory _name, string memory _symbol, address _synter) ERC20(_name, _symbol) {
