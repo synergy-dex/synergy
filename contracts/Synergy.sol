@@ -14,20 +14,20 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @title Synergy is the main contract. It serves to mint and burn rUSD
  */
 contract Synergy is Ownable {
-    event Minted(address indexed user, uint256 amountMinted, uint256 amountPledged);
-    event Deposited(address indexed user, uint256 amount);
-    event Burned(address indexed user, uint256 amount);
-    event Withdrawed(address indexed user, uint256 amount);
-    event Liquidated(address indexed liquidator, address indexed user, uint256 rUsdAmount);
+    event Minted(uint256 amountMinted, uint256 amountPledged);
+    event Deposited(uint256 amount);
+    event Burned(uint256 amount);
+    event Withdrawed(uint256 amount);
+    event Liquidated(address indexed user, uint256 rUsdAmount);
 
-    ISynt public immutable rUsd; // rUsd address
-    IERC20 public immutable wEth; // wEth address
-    IERC20 public immutable raw; // RAW token
-    ISynter public immutable synter; // address of the Synter contract
-    IOracle public immutable oracle; // oracle to get synt prices
-    ITreasury public immutable treasury; // treasury address to collect rewards
-    ILoan public immutable loan; // Loan contract which contains shorts
-    IInsurance immutable insurance; // Insurance contract
+    ISynt public rUsd; // rUsd address
+    IERC20 public wEth; // wEth address
+    IERC20 public raw; // RAW token
+    ISynter public synter; // address of the Synter contract
+    IOracle public oracle; // oracle to get synt prices
+    ITreasury public treasury; // treasury address to collect rewards
+    ILoan public loan; // Loan contract which contains shorts
+    IInsurance insurance; // Insurance contract
     uint32 public minCollateralRatio; // min collateral ration e.g. 1.2 (8 decimals)
     uint32 public liquidationCollateralRatio; // collateral ratio to enough to liquidate e.g. 1.2 (8 decimals)
     uint32 public liquidationPenalty; // rewards for liquidation e.g 0.1 (8 decimals)
@@ -37,14 +37,6 @@ contract Synergy is Ownable {
     mapping(address => UserDebt) public userDebts; // user debts info
 
     constructor(
-        address _rUsd,
-        address _wEth,
-        address _raw,
-        address _synter,
-        address _oracle,
-        address _treasury,
-        address _loan,
-        address _insurance,
         uint32 _minCollateralRatio,
         uint32 _liquidationCollateralRatio,
         uint32 _liquidationPenalty,
@@ -58,6 +50,36 @@ contract Synergy is Ownable {
             1e8 + _liquidationPenalty + _treasuryFee <= _liquidationCollateralRatio,
             "1 + liquidationPenalty + treasuryFee should be <= liquidationCollateralRatio"
         );
+        minCollateralRatio = _minCollateralRatio;
+        liquidationCollateralRatio = _liquidationCollateralRatio;
+        liquidationPenalty = _liquidationPenalty;
+        treasuryFee = _treasuryFee;
+    }
+
+    /* ================= INITIALIZATION ================= */
+
+    function initialize(
+        address _rUsd,
+        address _wEth,
+        address _raw,
+        address _synter,
+        address _oracle,
+        address _treasury,
+        address _loan,
+        address _insurance
+    )
+        external
+        onlyOwner
+    {
+        require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
+        require(_wEth != address(0) && address(wEth) == address(0), "Inicialize only once");
+        require(_raw != address(0) && address(raw) == address(0), "Inicialize only once");
+        require(_synter != address(0) && address(synter) == address(0), "Inicialize only once");
+        require(_treasury != address(0) && address(treasury) == address(0), "Inicialize only once");
+        require(_insurance != address(0) && address(insurance) == address(0), "Inicialize only once");
+        require(_loan != address(0) && address(loan) == address(0), "Inicialize only once");
+        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+
         rUsd = ISynt(_rUsd);
         wEth = IERC20(_wEth);
         raw = IERC20(_raw);
@@ -65,10 +87,6 @@ contract Synergy is Ownable {
         treasury = ITreasury(_treasury);
         insurance = IInsurance(_insurance);
         loan = ILoan(_loan);
-        minCollateralRatio = _minCollateralRatio;
-        liquidationCollateralRatio = _liquidationCollateralRatio;
-        liquidationPenalty = _liquidationPenalty;
-        treasuryFee = _treasuryFee;
         oracle = IOracle(_oracle);
     }
 
@@ -104,7 +122,7 @@ contract Synergy is Ownable {
         wEth.transferFrom(msg.sender, address(this), _amountToPledge);
         synter.mintSynt(address(rUsd), msg.sender, _amountToMint);
 
-        emit Minted(msg.sender, _amountToMint, _amountToPledge);
+        emit Minted(_amountToMint, _amountToPledge);
     }
 
     /**
@@ -117,7 +135,7 @@ contract Synergy is Ownable {
         debt.collateral += _amount;
         rUsd.transferFrom(msg.sender, address(this), _amount);
 
-        emit Deposited(msg.sender, _amount);
+        emit Deposited(_amount);
     }
 
     /**
@@ -155,7 +173,7 @@ contract Synergy is Ownable {
             debt.minted = 0;
         }
 
-        emit Burned(msg.sender, amountToBurn_);
+        emit Burned(amountToBurn_);
     }
 
     /**
@@ -194,7 +212,7 @@ contract Synergy is Ownable {
         debt.collateral -= amountToWithdraw_;
         wEth.transfer(msg.sender, amountToWithdraw_);
 
-        emit Withdrawed(msg.sender, amountToWithdraw_);
+        emit Withdrawed(amountToWithdraw_);
     }
 
     /**
@@ -257,7 +275,7 @@ contract Synergy is Ownable {
         wEth.transfer(address(treasury), treasuryReward_);
         wEth.transfer(msg.sender, liquidatorReward_);
 
-        emit Liquidated(msg.sender, _user, neededRusd_);
+        emit Liquidated(_user, neededRusd_);
     }
 
     /* ================= PUBLIC FUNCTIONS ================= */

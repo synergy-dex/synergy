@@ -1,31 +1,56 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
 const hre = require("hardhat");
+const ethers = hre.ethers;
+
+async function deploySynter() {
+    const owner = await ethers.getSigner();
+    const Synter = await ethers.getContractFactory("Synter");
+    const synter = await ethers.deploy(
+        address, // _rUsdAddress,
+        address, // _synergyAddress,
+        address, // _loanAddress,
+        address, // _oracle,
+        address, // _treasury,
+        uint32 // _swapFee
+    );
+    await synter.deployed();
+    return synter.address;
+}
+
+async function deployRusd() {
+    const owner = await ethers.getSigner();
+    const Synt = await ethers.getContractFactory("Synt");
+    const synt = await ethers.deploy(
+        "Raw USD", // name
+        "rUSD", // symbol
+        address // synter
+    );
+    await synt.deployed();
+    return synt.address;
+}
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
-
-  const lockedAmount = hre.ethers.utils.parseEther("1");
-
-  const Lock = await hre.ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-
-  await lock.deployed();
-
-  console.log(
-    `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
+    const owner = await ethers.getSigner();
+    const Synergy = await ethers.getContractFactory("Synergy");
+    const synergy = await Synergy.deploy(
+        address, // _rUsd,
+        address, // _wEth,
+        address, // _raw,
+        address, // _synter,
+        address, // _oracle,
+        address, // _treasury,
+        address, // _loan,
+        address, // _insurance,
+        uint32, // _minCollateralRatio,
+        uint32, // _liquidationCollateralRatio,
+        uint32, // _liquidationPenalty,
+        uint32 // _treasuryFee
+    );
+    await synergy.deployed();
 }
 
 // We recommend this pattern to be able to use async/await everywhere
 // and properly handle errors.
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+    console.error(error);
+    process.exitCode = 1;
 });

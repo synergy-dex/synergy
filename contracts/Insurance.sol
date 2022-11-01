@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "./interfaces/IInsurance.sol";
 import "./interfaces/IRaw.sol";
+import "./interfaces/ISynt.sol";
 import "./interfaces/IOracle.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -11,22 +12,32 @@ contract Insurance is Ownable {
     event RemovedInsurance(address indexed user, bytes32 indexed insId);
     event Compensated(address indexed user, bytes32 indexed insId, uint256 amount);
 
-    IRaw public immutable raw; // RAW token contract
-    address public immutable rUsd;
-    address public immutable synergy; // Synergy contract address
-    IOracle public immutable oracle;
+    IRaw public raw; // RAW token contract
+    address public rUsd;
+    address public synergy; // Synergy contract address
+    IOracle public oracle;
 
     uint256 public maxLockTime; // after this time compensation = 100%. If 0 => compensations are turned off
     uint256 public minLockTime; // min insurance lock time
     mapping(bytes32 => UserInsurance) public insurances; // every insurance has unique id
     mapping(address => bytes32[]) public userInsurances; // list of user's insurances
 
-    constructor(address _rawAddress, address _rUsd, uint256 _maxLockTime, address _synergy, address _oracle) {
-        raw = IRaw(_rawAddress);
+    constructor(uint256 _maxLockTime) {
         maxLockTime = _maxLockTime;
+    }
+
+    /* ================= INITIALIZATION ================= */
+
+    function initialize(address _rUsd, address _raw, address _synergy, address _oracle) external onlyOwner {
+        require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
+        require(_raw != address(0) && address(raw) == address(0), "Inicialize only once");
+        require(_synergy != address(0) && address(_synergy) == address(0), "Inicialize only once");
+        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+
+        rUsd = _rUsd;
+        raw = IRaw(_raw);
         synergy = _synergy;
         oracle = IOracle(_oracle);
-        rUsd = _rUsd;
     }
 
     /* ================= USER FUNCTIONS ================= */

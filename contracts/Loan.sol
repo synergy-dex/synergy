@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "./interfaces/ISynt.sol";
 import "./interfaces/ILoan.sol";
+import "./interfaces/ITreasury.sol";
 import "./interfaces/ISynter.sol";
 import "./interfaces/IOracle.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -11,23 +12,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @title Loan is the contract to borrow synts for shorts or other purposes
  */
 contract Loan is Ownable {
-    event Borrowed(
-        address indexed user,
-        address indexed synt,
-        bytes32 indexed borrowId,
-        uint256 amountBorrowed,
-        uint256 amountPledged
-    );
-    event Deposited(address indexed user, bytes32 indexed borrowId, uint256 amount);
-    event Repayed(address indexed user, bytes32 indexed borrowId, uint256 amount);
-    event Withdrawed(address indexed user, bytes32 indexed borrowId, uint256 amount);
+    event Borrowed(address indexed synt, bytes32 indexed borrowId, uint256 amountBorrowed, uint256 amountPledged);
+    event Deposited(bytes32 indexed borrowId, uint256 amount);
+    event Repayed(bytes32 indexed borrowId, uint256 amount);
+    event Withdrawed(bytes32 indexed borrowId, uint256 amount);
     event LoanClosed(bytes32 indexed borrowId);
-    event Liquidated(address indexed liquidator, bytes32 indexed borrowId, uint256 syntAmount);
+    event Liquidated(address indexed user, bytes32 indexed borrowId, uint256 syntAmount);
 
-    ISynt public immutable rUsd; // rUsd address
-    ISynter public immutable synter; // address of the Synter contract
-    IOracle public immutable oracle; // oracle to get synt prices
-    address public immutable treasury; // treasury address to collect rewards
+    ISynt public rUsd; // rUsd address
+    ISynter public synter; // address of the Synter contract
+    IOracle public oracle; // oracle to get synt prices
+    ITreasury public treasury; // treasury address to collect rewards
     uint32 public minCollateralRatio; // min collateral ration e.g. 1.2 (8 decimals)
     uint32 public liquidationCollateralRatio; // collateral ratio to enough to liquidate e.g. 1.2 (8 decimals)
     uint32 public liquidationPenalty; // rewards for liquidation e.g 0.1 (8 decimals)
@@ -36,10 +31,6 @@ contract Loan is Ownable {
     mapping(address => bytes32[]) public userLoans;
 
     constructor(
-        address _rUsd,
-        address _synter,
-        address _oracle,
-        address _treasury,
         uint32 _minCollateralRatio,
         uint32 _liquidationCollateralRatio,
         uint32 _liquidationPenalty,
@@ -53,13 +44,23 @@ contract Loan is Ownable {
             1e8 + _liquidationPenalty + _treasuryFee <= _liquidationCollateralRatio,
             "1 + liquidationPenalty + treasuryFee should be <= liquidationCollateralRatio"
         );
-        rUsd = ISynt(_rUsd);
-        synter = ISynter(_synter);
-        treasury = _treasury;
         minCollateralRatio = _minCollateralRatio;
         liquidationCollateralRatio = _liquidationCollateralRatio;
         liquidationPenalty = _liquidationPenalty;
         treasuryFee = _treasuryFee;
+    }
+
+    /* ================= INITIALIZATION ================= */
+
+    function initialize(address _rUsd, address _synter, address _oracle, address _treasury) external onlyOwner {
+        require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
+        require(_synter != address(0) && address(synter) == address(0), "Inicialize only once");
+        require(_treasury != address(0) && address(treasury) == address(0), "Inicialize only once");
+        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+
+        rUsd = ISynt(_rUsd);
+        synter = ISynter(_synter);
+        treasury = ITreasury(_treasury);
         oracle = IOracle(_oracle);
     }
 
@@ -104,7 +105,7 @@ contract Loan is Ownable {
         synter.increaseShorts(_syntAddress, _amountToBorrow);
         synter.mintSynt(_syntAddress, msg.sender, _amountToBorrow);
 
-        emit Borrowed(msg.sender, _syntAddress, borrowId_, _amountToBorrow, _amountToPledge);
+        emit Borrowed(_syntAddress, borrowId_, _amountToBorrow, _amountToPledge);
     }
 
     /**
@@ -120,7 +121,7 @@ contract Loan is Ownable {
         loan.collateral += _amount;
         rUsd.transferFrom(msg.sender, address(this), _amount);
 
-        emit Deposited(msg.sender, _borrowId, _amount);
+        emit Deposited(_borrowId, _amount);
     }
 
     /**
@@ -137,7 +138,7 @@ contract Loan is Ownable {
         synter.decreaseShorts(loan.syntAddress, _amountToRepay);
         synter.burnSynt(loan.syntAddress, msg.sender, _amountToRepay);
 
-        emit Repayed(msg.sender, _borrowId, _amountToRepay);
+        emit Repayed(_borrowId, _amountToRepay);
     }
 
     /**
@@ -170,7 +171,7 @@ contract Loan is Ownable {
         loan.collateral -= _amount;
         rUsd.transfer(msg.sender, _amount);
 
-        emit Withdrawed(msg.sender, _borrowId, _amount);
+        emit Withdrawed(_borrowId, _amount);
 
         if (loan.collateral == 0 && loan.borrowed == 0) {
             // close loan
@@ -238,10 +239,10 @@ contract Loan is Ownable {
         }
 
         synter.burnSynt(loan.syntAddress, msg.sender, neededSynt_);
-        rUsd.transfer(treasury, treasuryReward_);
+        rUsd.transfer(address(treasury), treasuryReward_);
         rUsd.transfer(msg.sender, liquidatorReward_);
 
-        emit Liquidated(msg.sender, _borrowId, neededSynt_);
+        emit Liquidated(loan.user, _borrowId, neededSynt_);
 
         if (loan.collateral == 0 && loan.borrowed == 0) {
             // close loan

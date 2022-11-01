@@ -10,34 +10,44 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @title Synter is the contract to operate with different types of synth (create, mint, burn, etc.)
  */
 contract Synter is Ownable {
-    address public immutable rUsd; // rUSD address (Synt.sol)
+    address public rUsd; // rUSD address (Synt.sol)
     address[] public syntList; // list of all synt addresses
     mapping(address => SyntInfo) public syntInfo; // synt info by address
-    address public immutable synergy; // synergy contract (Synergy.sol)
-    address public immutable loan; // loan contract to borrow synts e.g. for shorts
-    IOracle public immutable oracle; // price oracle (Oracle.sol)
-    address public immutable treasury; // treasury address to fee collection
-    uint256 public swapFee; // swap fee (e.g. 0.03%), 18 decimals
-    uint256 public constant MAX_SWAP_FEE = 1e17; // swap fee maximum is 0.1%
+    address public synergy; // synergy contract (Synergy.sol)
+    address public loan; // loan contract to borrow synts e.g. for shorts
+    IOracle public oracle; // price oracle (Oracle.sol)
+    address public treasury; // treasury address to fee collection
+    uint32 public swapFee; // swap fee (e.g. 0.03%), 8 decimals
+    uint32 public constant MAX_SWAP_FEE = 1e5; // swap fee maximum is 0.1%
 
-    /**
-     * @param _rUsdAddress rUSD should always exist
-     */
-    constructor(
+    constructor(uint32 _swapFee) {
+        require(_swapFee <= MAX_SWAP_FEE, "Swap fee cannot exceed MAX_SWAP_FEE amount");
+        swapFee = _swapFee;
+    }
+
+    /* ================= INITIALIZATION ================= */
+
+    function initialize(
         address _rUsdAddress,
         address _synergyAddress,
         address _loanAddress,
         address _oracle,
-        address _treasury,
-        uint256 _swapFee
-    ) {
-        require(_swapFee <= MAX_SWAP_FEE, "Swap fee cannot exceed MAX_SWAP_FEE amount");
+        address _treasury
+    )
+        external
+        onlyOwner
+    {
+        require(_rUsdAddress != address(0) && rUsd == address(0), "Inicialize only once");
+        require(_synergyAddress != address(0) && synergy == address(0), "Inicialize only once");
+        require(_loanAddress != address(0) && loan == address(0), "Inicialize only once");
+        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+        require(_treasury != address(0) && treasury == address(0), "Inicialize only once");
+
         rUsd = _rUsdAddress;
         synergy = _synergyAddress;
         loan = _loanAddress;
         oracle = IOracle(_oracle);
         treasury = _treasury;
-        swapFee = _swapFee;
     }
 
     /* ================= SYNERGY AND LOAN FUNCTIONS ================= */
@@ -86,7 +96,7 @@ contract Synter is Ownable {
         delete syntInfo[_syntAddress];
     }
 
-    function changeSwapFee(uint256 _newFee) external onlyOwner {
+    function changeSwapFee(uint32 _newFee) external onlyOwner {
         require(_newFee <= MAX_SWAP_FEE, "Swap fee cannot exceed MAX_SWAP_FEE amount");
         swapFee = _newFee;
     }
@@ -118,7 +128,7 @@ contract Synter is Ownable {
 
         uint256 amountTo_ = (fromPrice_ * _amountFrom * 10 ** toDecimals_) / (toPrice_ * 10 ** fromDecimals_);
 
-        uint256 fee_ = (amountTo_ * swapFee) / 1e18;
+        uint256 fee_ = (amountTo_ * swapFee) / 1e8;
 
         ISynt(_fromSynt).burnFrom(msg.sender, _amountFrom);
         ISynt(_toSynt).mint(msg.sender, amountTo_ - fee_);
@@ -141,7 +151,7 @@ contract Synter is Ownable {
 
         uint256 amountFrom_ = (toPrice_ * _amountTo * 10 ** fromDecimals_) / (fromPrice_ * 10 ** toDecimals_);
 
-        uint256 fee_ = (_amountTo * swapFee) / 1e18;
+        uint256 fee_ = (_amountTo * swapFee) / 1e8;
 
         ISynt(_fromSynt).burnFrom(msg.sender, amountFrom_);
         ISynt(_toSynt).mint(msg.sender, _amountTo - fee_);
