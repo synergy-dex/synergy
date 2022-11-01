@@ -22,7 +22,8 @@ contract Insurance is Ownable {
     mapping(bytes32 => UserInsurance) public insurances; // every insurance has unique id
     mapping(address => bytes32[]) public userInsurances; // list of user's insurances
 
-    constructor(uint256 _maxLockTime) {
+    constructor(uint256 _minLockTime, uint256 _maxLockTime) {
+        minLockTime = _minLockTime;
         maxLockTime = _maxLockTime;
     }
 
