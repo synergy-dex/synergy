@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 interface IOracle {
-    function getSyntPrice(address _syntAddress) external view returns (uint256, uint8);
-    function changeSyntFeed(address _syntAddress, address _priceFeed) external;
+    function getPrice(address _address) external view returns (uint256, uint8);
+    function changeFeed(address _address, address _priceFeed) external;
     function changeRusdAddress(address _newAddress) external;
 }

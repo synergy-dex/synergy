@@ -43,13 +43,13 @@ contract Synter is Ownable {
     /* ================= SYNERGY AND LOAN FUNCTIONS ================= */
 
     function mintSynt(address _syntAddress, address _to, uint256 _amount) external {
-        require(syntInfo[_syntAddress].syntId != 0, "Synt doesn't exist");
+        require(syntInfo[_syntAddress].syntId != 0 || _syntAddress == rUsd, "Synt doesn't exist");
         require(msg.sender == synergy || msg.sender == loan, "Only Synergy and Loan contracts");
         ISynt(_syntAddress).mint(_to, _amount);
     }
 
     function burnSynt(address _syntAddress, address _from, uint256 _amount) external {
-        require(syntInfo[_syntAddress].syntId != 0, "Synt doesn't exist");
+        require(syntInfo[_syntAddress].syntId != 0 || _syntAddress == rUsd, "Synt doesn't exist");
         require(msg.sender == synergy || msg.sender == loan, "Only Synergy and Loan contracts");
         ISynt(_syntAddress).burnFrom(_from, _amount);
     }
@@ -109,12 +109,12 @@ contract Synter is Ownable {
      * @param _amountFrom amount to spend
      */
     function swapFrom(address _fromSynt, address _toSynt, uint256 _amountFrom) external {
-        require(syntInfo[_fromSynt].syntId != 0, "First synt does not exist");
-        require(syntInfo[_toSynt].syntId != 0, "Second synt does not exist");
+        require(syntInfo[_fromSynt].syntId != 0 || _fromSynt == rUsd, "First synt does not exist");
+        require(syntInfo[_toSynt].syntId != 0 || _toSynt == rUsd, "Second synt does not exist");
         require(_amountFrom > 0, "Amount cannot be zero");
 
-        (uint256 fromPrice_, uint8 fromDecimals_) = oracle.getSyntPrice(_fromSynt);
-        (uint256 toPrice_, uint8 toDecimals_) = oracle.getSyntPrice(_toSynt);
+        (uint256 fromPrice_, uint8 fromDecimals_) = oracle.getPrice(_fromSynt);
+        (uint256 toPrice_, uint8 toDecimals_) = oracle.getPrice(_toSynt);
 
         uint256 amountTo_ = (fromPrice_ * _amountFrom * 10 ** toDecimals_) / (toPrice_ * 10 ** fromDecimals_);
 
@@ -132,12 +132,12 @@ contract Synter is Ownable {
      * @param _amountTo amount to get
      */
     function swapTo(address _fromSynt, address _toSynt, uint256 _amountTo) external {
-        require(syntInfo[_fromSynt].syntId != 0, "First synt does not exist");
-        require(syntInfo[_toSynt].syntId != 0, "Second synt does not exist");
+        require(syntInfo[_fromSynt].syntId != 0 || _fromSynt == rUsd, "First synt does not exist");
+        require(syntInfo[_toSynt].syntId != 0 || _toSynt == rUsd, "Second synt does not exist");
         require(_amountTo > 0, "Amount cannot be zero");
 
-        (uint256 fromPrice_, uint8 fromDecimals_) = oracle.getSyntPrice(_fromSynt);
-        (uint256 toPrice_, uint8 toDecimals_) = oracle.getSyntPrice(_toSynt);
+        (uint256 fromPrice_, uint8 fromDecimals_) = oracle.getPrice(_fromSynt);
+        (uint256 toPrice_, uint8 toDecimals_) = oracle.getPrice(_toSynt);
 
         uint256 amountFrom_ = (toPrice_ * _amountTo * 10 ** fromDecimals_) / (fromPrice_ * 10 ** toDecimals_);
 
@@ -150,9 +150,22 @@ contract Synter is Ownable {
 
     /* ================= PUBLIC FUNCTIONS ================= */
 
+    /**
+     * @notice get synt index in syntList by id
+     * @param _syntAddress address of the synt
+     * @return index
+     */
     function getSyntInd(address _syntAddress) public view returns (uint256) {
         uint256 syntId_ = syntInfo[_syntAddress].syntId;
         require(syntId_ != 0, "Synt doesn't exist");
         return syntId_ - 1;
+    }
+
+    /**
+     * @notice get total number of synts except of rUSD
+     * @return number of synts
+     */
+    function totalSynts() public view returns (uint256) {
+        return syntList.length;
     }
 }

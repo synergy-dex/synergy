@@ -23,4 +23,5 @@ interface ISynter {
     function syntList(uint256 syntId) external view returns (address syntAddress);
     function syntInfo(address syntAddress) external view returns (SyntInfo memory);
     function getSyntInd(address _syntAddress) external view returns (uint256);
+    function totalSynts() external view returns (uint256);
 }

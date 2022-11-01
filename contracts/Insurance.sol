@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "./interfaces/IInsurance.sol";
 import "./interfaces/IRaw.sol";
+import "./interfaces/IOracle.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Insurance is Ownable {
@@ -11,17 +12,21 @@ contract Insurance is Ownable {
     event Compensated(address indexed user, bytes32 indexed insId, uint256 amount);
 
     IRaw public immutable raw; // RAW token contract
+    address public immutable rUsd;
     address public immutable synergy; // Synergy contract address
+    IOracle public immutable oracle;
 
     uint256 public maxLockTime; // after this time compensation = 100%. If 0 => compensations are turned off
     uint256 public minLockTime; // min insurance lock time
     mapping(bytes32 => UserInsurance) public insurances; // every insurance has unique id
     mapping(address => bytes32[]) public userInsurances; // list of user's insurances
 
-    constructor(address _rawAddress, uint256 _maxLockTime, address _synergy) {
+    constructor(address _rawAddress, address _rUsd, uint256 _maxLockTime, address _synergy, address _oracle) {
         raw = IRaw(_rawAddress);
         maxLockTime = _maxLockTime;
         synergy = _synergy;
+        oracle = IOracle(_oracle);
+        rUsd = _rUsd;
     }
 
     /* ================= USER FUNCTIONS ================= */
@@ -75,20 +80,30 @@ contract Insurance is Ownable {
      * @notice Function to mint compensation
      * @dev Callable only by synergy contract
      * @param _insId unique insurance id
-     * @param _amount amount of RAW to mint
+     * @param _overpayed compensation required in rUSD
+     * @return compensated in rUSD
      */
-    function compensate(bytes32 _insId, uint256 _amount) external {
+    function compensate(bytes32 _insId, uint256 _overpayed) external returns (uint256) {
         require(msg.sender == address(synergy), "Callable only by the Synergy contract");
 
-        uint256 compensation_ = availableCompensation(_insId);
-        require(compensation_ >= _amount, "Not enough compensation");
-        require(compensation_ != 0, "No available compensation");
+        uint256 availableCompensation_ = availableCompensation(_insId); // in RAW
+
+        (uint256 rawPrice_, uint8 rawDecimals_) = oracle.getPrice(address(raw));
+        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+
+        uint256 claimedCompensation_ = (_overpayed * rUsdPrice_ * rawDecimals_) / (rawPrice_ * rUsdDecimals_);
+
+        uint256 compensationInRaw_ =
+            claimedCompensation_ < availableCompensation_ ? claimedCompensation_ : availableCompensation_;
 
         UserInsurance storage insur = insurances[_insId];
-        insur.repaidRaw += _amount;
-        raw.mint(insur.user, _amount);
 
-        emit Compensated(insur.user, _insId, _amount);
+        insur.repaidRaw += compensationInRaw_;
+        raw.mint(insur.user, compensationInRaw_);
+
+        emit Compensated(insur.user, _insId, compensationInRaw_);
+
+        return (compensationInRaw_ * rawPrice_ * rUsdDecimals_) / (rUsdPrice_ * rawDecimals_);
     }
 
     /* ================= PUBLIC FUNCTIONS ================= */

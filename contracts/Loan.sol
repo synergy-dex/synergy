@@ -75,8 +75,8 @@ contract Loan is Ownable {
         require(synter.syntInfo(_syntAddress).shortsEnabled, "Shorts for the synt should be turned on");
         require(_amountToBorrow != 0, "Borrow ammount cannot be zero");
 
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getSyntPrice(address(rUsd));
-        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getSyntPrice(address(_syntAddress));
+        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(address(_syntAddress));
         require(syntPrice_ != 0, "Synt price cannot be zero");
 
         uint32 collateralRatio_ = uint32(
@@ -149,8 +149,8 @@ contract Loan is Ownable {
         UserLoan storage loan = loans[_borrowId];
 
         require(loan.user == msg.sender, "Cannot withdraw from someone else's loan");
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getSyntPrice(address(rUsd));
-        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getSyntPrice(address(loan.syntAddress));
+        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(address(loan.syntAddress));
 
         require(loan.collateral >= _amount, "Cannot withdraw more than pledged");
         uint256 collateralAfterWithdraw_ = loan.collateral - _amount;
@@ -186,21 +186,30 @@ contract Loan is Ownable {
         }
     }
 
+    /**
+     * @notice Function to liquidate under-collaterized positions
+     * @dev This function has no UI in the protocol app
+     * @param _borrowId unique borrow id
+     */
     function liquidate(bytes32 _borrowId) external {
         UserLoan storage loan = loans[_borrowId];
         require(loan.user != address(0), "Loan doesn't exist");
         require(collateralRatio(_borrowId) < loan.liquidationCollateralRatio, "Cannot liquidate yet");
 
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getSyntPrice(address(rUsd));
-        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getSyntPrice(address(loan.syntAddress));
+        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(address(loan.syntAddress));
 
         uint256 neededSynt_ = (
-            loan.minCollateralRatio * loan.borrowed * syntPrice_
-                - loan.collateral * rUsdPrice_ * 10 ** (8 + syntDecimals_ - rUsdDecimals_)
-        ) / (syntPrice_ * (loan.minCollateralRatio - (1e8 + loan.liquidationPenalty + loan.treasuryFee)));
+            loan.minCollateralRatio * loan.borrowed * syntPrice_ * 10 ** rUsdDecimals_
+                - loan.collateral * rUsdPrice_ * 10 ** (8 + syntDecimals_)
+        )
+            / (
+                syntPrice_ * 10 ** rUsdDecimals_
+                    * (loan.minCollateralRatio - (1e8 + loan.liquidationPenalty + loan.treasuryFee))
+            );
 
         uint256 liquidatedRusd_ = (
-            neededSynt_ * syntPrice_ * (1e8 + liquidationPenalty + loan.treasuryFee) * 10 ** rUsdDecimals_
+            neededSynt_ * syntPrice_ * (1e8 + loan.liquidationPenalty + loan.treasuryFee) * 10 ** rUsdDecimals_
         ) / (rUsdPrice_ * 10 ** (8 + syntDecimals_));
 
         uint256 liquidatorReward_ =
@@ -254,14 +263,14 @@ contract Loan is Ownable {
      * @notice Calculate collateral ratio for given borrowId
      * @dev returns 18 decimal
      * @param _borrowId uniquie id of the loan
-     * @return collateralRatio_ collateral ratio (percents)
+     * @return collateralRatio_ collateral ratio
      */
     function collateralRatio(bytes32 _borrowId) public view returns (uint32 collateralRatio_) {
         UserLoan storage loan = loans[_borrowId];
         require(loan.user != address(0), "Loan doesn't exist");
 
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getSyntPrice(address(rUsd));
-        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getSyntPrice(address(loan.syntAddress));
+        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(address(loan.syntAddress));
 
         if (syntPrice_ * loan.borrowed != 0) {
             collateralRatio_ = uint32(
