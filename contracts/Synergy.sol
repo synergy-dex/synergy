@@ -88,7 +88,8 @@ contract Synergy is Ownable {
         require(rUsdPrice_ != 0, "rUSD price cannot be zero");
 
         uint32 collateralRatio_ = uint32(
-            wEthPrice_ * _amountToPledge * 10 ** (8 + rUsdDecimals_ - wEthDecimals_) / (rUsdPrice_ * _amountToMint)
+            wEthPrice_ * _amountToPledge * 10 ** (8 + rUsdDecimals_)
+                / (rUsdPrice_ * _amountToMint * 10 ** wEthDecimals_)
         );
         require(collateralRatio_ >= minCollateralRatio, "Collateral ration less than minCollateralRatio");
 
@@ -144,10 +145,15 @@ contract Synergy is Ownable {
 
         uint256 overpayed_ = amountToBurn_ > debt.minted ? amountToBurn_ - debt.minted : 0;
 
-        uint256 compensated_ = insurance.compensate(_insId, overpayed_);
+        insurance.compensate(_insId, overpayed_);
 
-        // todo: нужно ли тут прибавлять?
-        debt.minted += compensated_;
+        if (debt.minted > amountToBurn_) {
+            unchecked {
+                debt.minted -= amountToBurn_;
+            }
+        } else {
+            debt.minted = 0;
+        }
 
         emit Burned(msg.sender, amountToBurn_);
     }
@@ -157,7 +163,6 @@ contract Synergy is Ownable {
      * @param _amount amount of wETH to withdraw
      */
     function withdraw(uint256 _amount) external {
-        // todo: добавить компенсацию
         UserDebt storage debt = userDebts[msg.sender];
         require(_amount != 0, "Withdraw amount cannot be zero");
 
@@ -166,17 +171,19 @@ contract Synergy is Ownable {
 
         require(rUsdPrice_ != 0, "rUSD price cannot be zero");
 
+        // min(debt.collateral, _amount)
         uint256 amountToWithdraw_ = debt.collateral > _amount ? _amount : debt.collateral;
 
         uint256 globalDebt_ = globalDebt();
         uint256 userDebt_ = (globalDebt_ * debt.shares) / totalShares;
+
         uint256 collateralAfterWithdraw_ = debt.collateral - amountToWithdraw_;
 
         uint32 collateralRatio_;
         if (userDebt_ != 0) {
             collateralRatio_ = uint32(
-                wEthPrice_ * collateralAfterWithdraw_ * 10 ** (8 + rUsdDecimals_ - wEthDecimals_)
-                    / (rUsdPrice_ * userDebt_)
+                wEthPrice_ * collateralAfterWithdraw_ * 10 ** (8 + rUsdDecimals_)
+                    / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
             );
         } else {
             collateralRatio_ = type(uint32).max;
@@ -239,8 +246,10 @@ contract Synergy is Ownable {
         if (sharesToBurn_ <= debt.shares) {
             unchecked {
                 debt.shares -= sharesToBurn_;
+                totalShares -= sharesToBurn_;
             }
         } else {
+            totalShares -= debt.shares;
             debt.shares = 0;
         }
 

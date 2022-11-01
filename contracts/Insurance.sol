@@ -91,7 +91,8 @@ contract Insurance is Ownable {
         (uint256 rawPrice_, uint8 rawDecimals_) = oracle.getPrice(address(raw));
         (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
 
-        uint256 claimedCompensation_ = (_overpayed * rUsdPrice_ * rawDecimals_) / (rawPrice_ * rUsdDecimals_);
+        uint256 claimedCompensation_ =
+            (_overpayed * rUsdPrice_ * 10 ** rawDecimals_) / (rawPrice_ * 10 ** rUsdDecimals_);
 
         uint256 compensationInRaw_ =
             claimedCompensation_ < availableCompensation_ ? claimedCompensation_ : availableCompensation_;
@@ -103,7 +104,7 @@ contract Insurance is Ownable {
 
         emit Compensated(insur.user, _insId, compensationInRaw_);
 
-        return (compensationInRaw_ * rawPrice_ * rUsdDecimals_) / (rUsdPrice_ * rawDecimals_);
+        return (compensationInRaw_ * rawPrice_ * 10 ** rUsdDecimals_) / (rUsdPrice_ * 10 ** rawDecimals_);
     }
 
     /* ================= PUBLIC FUNCTIONS ================= */
