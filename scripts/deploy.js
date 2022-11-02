@@ -158,6 +158,12 @@ async function main() {
         rUsd.address // _rUsd
     );
 
+    await insurance.initialize(
+        rUsd.address, // _rUsd
+        raw.address, // _raw
+        synergy.address, // _synergy
+        oracle.address // _oracle
+    );
     await raw.initialize(
         insurance.address // _insurance
     );
