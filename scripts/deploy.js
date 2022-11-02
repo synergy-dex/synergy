@@ -178,5 +178,23 @@ main().catch((error) => {
 });
 
 // LAST CONTRACTS
-// Treasury: 0x323D1e302840e0991C4f11814138eCE22080d0af
-//
+// =======================
+// Treasury deployed at { 0x32C26B3631A04C2c271d19d555774EB5095bD573 }
+// =======================
+// Synter deployed at { 0x0E0d8f151Af2d4203c29200B0EdBbf05097c6AC4 }
+// =======================
+// Synt { Raw USD } deployed at { 0xB63DEfF494a8B8dA490069aF4795732085e6Eb80 }
+// =======================
+// Synergy deployed at { 0xe3C9A0cd80155f30B805e161d9A01aC5516EF1bF }
+// =======================
+// Oracle deployed at { 0x0Ceb11cf6Aa3E962d7db74CCcBecea55bd2F3Fee }
+// =======================
+// Loan deployed at { 0x5591681e4de68e7b37380387eeeD19a97ad5B047 }
+// =======================
+// Insurance deployed at { 0xA0De59EB4e27de408DD2691BeB5E14dba1Cc3045 }
+// =======================
+// RAW deployed at { 0xB4C831Cdffd63d34f156487136E4159B2B706aa8 }
+// =======================
+// MockWeth deployed at { 0xdd10F6D0C894A7555168db7ea2061Ab110Bb3878 }
+// =======================
+// MockDataFeed for { RAW } deployed at { 0x284178603892f352692E5c674b5A4D9294d8C8e7 }
