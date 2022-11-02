@@ -22,4 +22,11 @@ contract Raw is ERC20, Ownable {
         require(msg.sender == insurance, "Only Insurance contract");
         _mint(_to, _amount);
     }
+
+    /**
+     * @dev function just for testnet
+     */
+    function mintTest(uint256 _amount) external onlyOwner {
+        _mint(msg.sender, _amount);
+    }
 }
