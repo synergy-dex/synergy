@@ -130,7 +130,7 @@ contract Insurance is Ownable {
      * @return unlock timestamp
      */
     function getUnlockTime(bytes32 _insId) public view returns (uint256) {
-        return insurances[_insId].lockTime - insurances[_insId].startTime;
+        return insurances[_insId].lockTime + insurances[_insId].startTime;
     }
 
     /**

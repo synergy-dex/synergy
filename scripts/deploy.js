@@ -182,3 +182,14 @@ main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
 });
+
+module.exports = {
+    deployTreasury,
+    deploySynter,
+    deploySynt,
+    deploySynergy,
+    deployOracle,
+    deployLoan,
+    deployInsurance,
+    deployRaw,
+};

@@ -1,20 +1,100 @@
 const { expect } = require("chai");
-const { ethers } = reuire("hardhat");
+const { ethers } = require("hardhat");
 
-import {
-    deployTreasury,
-    deploySynter,
-    deploySynt,
-    deploySynergy,
-    deployOracle,
-    deployLoan,
-    deployInsurance,
-    deployRaw,
-} from "../scripts/deploy.js";
+async function deployTreasury() {
+    const owner = await ethers.getSigner();
+    const Treasury = await ethers.getContractFactory("Treasury");
+    const treasury = await Treasury.deploy();
+    await treasury.deployed();
+    return treasury;
+}
+
+async function deploySynter() {
+    const Synter = await ethers.getContractFactory("Synter");
+    const synter = await Synter.deploy(
+        3e4 // _swapFee (0,03%)
+    );
+    await synter.deployed();
+    return synter;
+}
+
+async function deploySynt(name, symbol) {
+    const Synt = await ethers.getContractFactory("Synt");
+    const synt = await Synt.deploy(
+        name, // name
+        symbol // symbol
+    );
+    await synt.deployed();
+    return synt;
+}
+
+async function deploySynergy() {
+    const Synergy = await ethers.getContractFactory("Synergy");
+    const synergy = await Synergy.deploy(
+        2e8, // _minCollateralRatio, (200%)
+        15e7, // _liquidationCollateralRatio, (150%)
+        1e7, // _liquidationPenalty, (10%)
+        1e7 // _treasuryFee (10%)
+    );
+    await synergy.deployed();
+    return synergy;
+}
+
+async function deployOracle() {
+    const Oracle = await ethers.getContractFactory("Oracle");
+    const oracle = await Oracle.deploy();
+    await oracle.deployed();
+    return oracle;
+}
+
+async function deployLoan() {
+    const Loan = await ethers.getContractFactory("Loan");
+    const loan = await Loan.deploy(
+        15e7, // _minCollateralRatio, (150%)
+        12e7, // _liquidationCollateralRatio, (120%)
+        1e7, // _liquidationPenalty, (10%)
+        1e7 // _treasuryFee); (10%)
+    );
+    await loan.deployed();
+    return loan;
+}
+
+async function deployInsurance() {
+    const Insurance = await ethers.getContractFactory("Insurance");
+    const insurance = await Insurance.deploy(
+        2592000, // _minLockTime (30 days)
+        63070000 // _maxLockTime (2 years)
+    );
+    await insurance.deployed();
+    return insurance;
+}
+
+async function deployRaw() {
+    const Raw = await ethers.getContractFactory("Raw");
+    const raw = await Raw.deploy();
+    await raw.deployed();
+    return raw;
+}
+
+async function deployMockWeth() {
+    const MockWeth = await ethers.getContractFactory("MockWeth");
+    const mockWeth = await MockWeth.deploy();
+    await mockWeth.deployed();
+    return mockWeth;
+}
+
+async function deployMockDataFeed(assetName, assetPrice) {
+    const MockDataFeed = await ethers.getContractFactory("MockDataFeed");
+    const mockDataFeed = await MockDataFeed.deploy(assetName, assetPrice);
+    await mockDataFeed.deployed();
+    return mockDataFeed;
+}
 
 describe("Insurance", function () {
     let deployer, alice, bob, carol;
     let insurance;
+
+    const ETH = ethers.utils.parseEther("1.0");
 
     beforeEach(async () => {
         [deployer, alice, bob, carol] = await ethers.getSigners();
@@ -76,10 +156,41 @@ describe("Insurance", function () {
     });
 
     describe("StakeRaw", function () {
-        it("Should set the right unlockTime", async function () {
-            const { lock, unlockTime } = await loadFixture(deployOneYearLockFixture);
+        it("Should substract RAW", async function () {
+            await raw.mintTest(ETH.mul(1000));
+            await raw.approve(insurance.address, ETH.mul(1000));
+            await insurance.stakeRaw(2628000, ETH.mul(1000));
 
-            expect(await lock.unlockTime()).to.equal(unlockTime);
+            expect(await raw.balanceOf(deployer.address)).to.be.equal(0);
+            expect(await raw.balanceOf(insurance.address)).to.be.equal(ETH.mul(1000));
+        });
+        it("Should be right insurance", async function () {
+            await raw.mintTest(ETH.mul(1000));
+            await raw.approve(insurance.address, ETH.mul(1000));
+            tx = await insurance.stakeRaw(2628000, ETH.mul(1000));
+            receipt = await tx.wait();
+
+            insId = receipt.logs[2].topics[2];
+
+            expect(await insurance.availableCompensation(insId)).to.be.equal(
+                ETH.mul(2628000).mul(1000).div(63070000)
+            );
+        });
+        it.only("Should unstake after lock time", async function () {
+            await raw.mintTest(ETH.mul(1000));
+            await raw.approve(insurance.address, ETH.mul(1000));
+            tx = await insurance.stakeRaw(2628000, ETH.mul(1000));
+            receipt = await tx.wait();
+
+            insId = receipt.logs[2].topics[2];
+
+            await expect(insurance.unstakeRaw(insId)).to.be.reverted;
+
+            await ethers.provider.send("evm_increaseTime", [63070000 + 1]);
+            await ethers.provider.send("evm_mine");
+
+            await insurance.unstakeRaw(insId);
+            expect(await raw.balanceOf(deployer.address)).to.be.equal(ETH.mul(1000));
         });
     });
 });
