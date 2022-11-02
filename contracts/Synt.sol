@@ -6,9 +6,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Synt is ERC20, Ownable {
     address public synter; // address of the Synter contract
-    uint256 public maxSupply;
+    uint256 public maxSupply; // max supply
 
-    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
+    constructor(string memory _name, string memory _symbol, uint256 _maxSupply) ERC20(_name, _symbol) {
+        maxSupply = _maxSupply;
+    }
 
     /**
      * @dev Reinitialization available only for test purposes to spare goerli ETH

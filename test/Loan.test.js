@@ -91,9 +91,9 @@ async function deployMockDataFeed(assetName, assetPrice) {
     return mockDataFeed;
 }
 
-describe("Insurance", function () {
+describe("Loan", function () {
     let deployer, alice, bob, carol;
-    let insurance;
+    let loan;
 
     const ETH = ethers.utils.parseEther("1.0");
 
@@ -157,41 +157,8 @@ describe("Insurance", function () {
     });
 
     describe("StakeRaw", function () {
-        it("Should substract RAW", async function () {
-            await raw.mintTest(ETH.mul(1000));
-            await raw.approve(insurance.address, ETH.mul(1000));
-            await insurance.stakeRaw(2628000, ETH.mul(1000));
-
-            expect(await raw.balanceOf(deployer.address)).to.be.equal(0);
-            expect(await raw.balanceOf(insurance.address)).to.be.equal(ETH.mul(1000));
-        });
-        it("Should be right insurance", async function () {
-            await raw.mintTest(ETH.mul(1000));
-            await raw.approve(insurance.address, ETH.mul(1000));
-            tx = await insurance.stakeRaw(2628000, ETH.mul(1000));
-            receipt = await tx.wait();
-
-            insId = receipt.logs[2].topics[2];
-
-            expect(await insurance.availableCompensation(insId)).to.be.equal(
-                ETH.mul(2628000).mul(1000).div(63070000)
-            );
-        });
-        it("Should unstake after lock time", async function () {
-            await raw.mintTest(ETH.mul(1000));
-            await raw.approve(insurance.address, ETH.mul(1000));
-            tx = await insurance.stakeRaw(2628000, ETH.mul(1000));
-            receipt = await tx.wait();
-
-            insId = receipt.logs[2].topics[2];
-
-            await expect(insurance.unstakeRaw(insId)).to.be.reverted;
-
-            await ethers.provider.send("evm_increaseTime", [63070000 + 1]);
-            await ethers.provider.send("evm_mine");
-
-            await insurance.unstakeRaw(insId);
-            expect(await raw.balanceOf(deployer.address)).to.be.equal(ETH.mul(1000));
+        it("Should borrow correctly", async function () {
+            await rUsd.connect(synter.address).mint();
         });
     });
 });

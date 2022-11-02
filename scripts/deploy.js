@@ -28,7 +28,8 @@ async function deploySynt(name, symbol) {
     const Synt = await ethers.getContractFactory("Synt");
     const synt = await Synt.deploy(
         name, // name
-        symbol // symbol
+        symbol, // symbol
+        ethers.utils.parseEther("1000000000") // maxSupply
     );
     await synt.deployed();
     console.log("=======================");
@@ -154,6 +155,7 @@ async function main() {
     await rUsd.initialize(
         synter.address // _synter
     );
+
     await oracle.initialize(
         rUsd.address // _rUsd
     );
