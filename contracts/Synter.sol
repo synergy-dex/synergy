@@ -27,6 +27,9 @@ contract Synter is Ownable {
 
     /* ================= INITIALIZATION ================= */
 
+    /**
+     * @dev Reinitialization available only for test purposes to spare goerli ETH
+     */
     function initialize(
         address _rUsdAddress,
         address _synergyAddress,
@@ -37,11 +40,11 @@ contract Synter is Ownable {
         external
         onlyOwner
     {
-        require(_rUsdAddress != address(0) && rUsd == address(0), "Inicialize only once");
-        require(_synergyAddress != address(0) && synergy == address(0), "Inicialize only once");
-        require(_loanAddress != address(0) && loan == address(0), "Inicialize only once");
-        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
-        require(_treasury != address(0) && treasury == address(0), "Inicialize only once");
+        // require(_rUsdAddress != address(0) && rUsd == address(0), "Inicialize only once");
+        // require(_synergyAddress != address(0) && synergy == address(0), "Inicialize only once");
+        // require(_loanAddress != address(0) && loan == address(0), "Inicialize only once");
+        // require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+        // require(_treasury != address(0) && treasury == address(0), "Inicialize only once");
 
         rUsd = _rUsdAddress;
         synergy = _synergyAddress;

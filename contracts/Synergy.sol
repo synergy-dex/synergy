@@ -58,6 +58,9 @@ contract Synergy is Ownable {
 
     /* ================= INITIALIZATION ================= */
 
+    /**
+     * @dev Reinitialization available only for test purposes to spare goerli ETH
+     */
     function initialize(
         address _rUsd,
         address _wEth,
@@ -71,14 +74,14 @@ contract Synergy is Ownable {
         external
         onlyOwner
     {
-        require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
-        require(_wEth != address(0) && address(wEth) == address(0), "Inicialize only once");
-        require(_raw != address(0) && address(raw) == address(0), "Inicialize only once");
-        require(_synter != address(0) && address(synter) == address(0), "Inicialize only once");
-        require(_treasury != address(0) && address(treasury) == address(0), "Inicialize only once");
-        require(_insurance != address(0) && address(insurance) == address(0), "Inicialize only once");
-        require(_loan != address(0) && address(loan) == address(0), "Inicialize only once");
-        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+        // require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
+        // require(_wEth != address(0) && address(wEth) == address(0), "Inicialize only once");
+        // require(_raw != address(0) && address(raw) == address(0), "Inicialize only once");
+        // require(_synter != address(0) && address(synter) == address(0), "Inicialize only once");
+        // require(_treasury != address(0) && address(treasury) == address(0), "Inicialize only once");
+        // require(_insurance != address(0) && address(insurance) == address(0), "Inicialize only once");
+        // require(_loan != address(0) && address(loan) == address(0), "Inicialize only once");
+        // require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
 
         rUsd = ISynt(_rUsd);
         wEth = IERC20(_wEth);

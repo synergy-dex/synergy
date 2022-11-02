@@ -29,11 +29,14 @@ contract Insurance is Ownable {
 
     /* ================= INITIALIZATION ================= */
 
+    /**
+     * @dev Reinitialization available only for test purposes to spare goerli ETH
+     */
     function initialize(address _rUsd, address _raw, address _synergy, address _oracle) external onlyOwner {
-        require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
-        require(_raw != address(0) && address(raw) == address(0), "Inicialize only once");
-        require(_synergy != address(0) && address(_synergy) == address(0), "Inicialize only once");
-        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+        // require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
+        // require(_raw != address(0) && address(raw) == address(0), "Inicialize only once");
+        // require(_synergy != address(0) && address(_synergy) == address(0), "Inicialize only once");
+        // require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
 
         rUsd = _rUsd;
         raw = IRaw(_raw);

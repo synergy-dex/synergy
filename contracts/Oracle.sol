@@ -13,8 +13,13 @@ contract Oracle is Ownable {
     address public rUsd; // rUSD address
     uint256 constant RUSD_PRICE = 1e18; // rUSD price always = 1$ (18 decimals)
 
-    constructor(address _rUsd) {
-        require(_rUsd != address(0), "rUSD cannot be zero address");
+    constructor() {}
+
+    /**
+     * @dev Reinitialization available only for test purposes to spare goerli ETH
+     */
+    function initialize(address _rUsd) external onlyOwner {
+        // require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
         rUsd = _rUsd;
     }
 

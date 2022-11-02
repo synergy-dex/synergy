@@ -15,6 +15,14 @@ async function createSynt(name, symbol, synter, oracle, price) {
     return synt;
 }
 
+async function addSynt(name, symbol, synter, oracle, feedAddress) {
+    synt = await deploySynt(name, symbol, synter);
+    await oracle.changeFeed(synt.address, feedAddress);
+    await synter.addSynt(synt.address, true);
+    console.log("Synt { %s } set with feed { %s }", name, synt.address, feedAddress);
+    return synt;
+}
+
 SYNTER_ADDRESS = "";
 ORACLE_ADDRESS = "";
 
@@ -24,13 +32,14 @@ async function main() {
     synter = new ethers.Contract(SYNTER_ADDRESS, synterAbi, owner);
     oracle = new ethers.Contract(ORACLE_ADDRESS, oracleAbi, owner);
 
-    await createSynt("GOLD", "rGLD", synter, oracle, ethers.utils.parseEther("50"));
+    // create GOLD with price from XAU datafeed
+    await addSynt("GOLD", "rGLD", synter, oracle, "0x7b219F57a8e9C7303204Af681e9fA69d17ef626f");
 
     // create GAS with 2.58$ price per Gallon
     await createSynt("GAS", "rGAS", synter, oracle, ethers.utils.parseEther("2.58"));
 
-    // create gold with 50$ price per gram
-    await createSynt("GOLD", "rGLD", synter, oracle, ethers.utils.parseEther("50"));
+    // create WHEAT with 9.17$ price per Bushel
+    await createSynt("WHEAT", "rWHT", synter, oracle, ethers.utils.parseEther("9.17"));
 }
 
 // We recommend this pattern to be able to use async/await everywhere

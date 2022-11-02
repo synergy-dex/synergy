@@ -51,12 +51,14 @@ contract Loan is Ownable {
     }
 
     /* ================= INITIALIZATION ================= */
-
+    /**
+     * @dev Reinitialization available only for test purposes to spare goerli ETH
+     */
     function initialize(address _rUsd, address _synter, address _oracle, address _treasury) external onlyOwner {
-        require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
-        require(_synter != address(0) && address(synter) == address(0), "Inicialize only once");
-        require(_treasury != address(0) && address(treasury) == address(0), "Inicialize only once");
-        require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
+        // require(_rUsd != address(0) && address(rUsd) == address(0), "Inicialize only once");
+        // require(_synter != address(0) && address(synter) == address(0), "Inicialize only once");
+        // require(_treasury != address(0) && address(treasury) == address(0), "Inicialize only once");
+        // require(_oracle != address(0) && address(oracle) == address(0), "Inicialize only once");
 
         rUsd = ISynt(_rUsd);
         synter = ISynter(_synter);

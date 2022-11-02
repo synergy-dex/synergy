@@ -2,12 +2,19 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title RAW token
-contract Raw is ERC20 {
-    address public immutable insurance; // Insurance contract
+contract Raw is ERC20, Ownable {
+    address public insurance; // Insurance contract
 
-    constructor(address _insurance) ERC20("Raw Token", "RAW") {
+    constructor() ERC20("Raw Token", "RAW") {}
+
+    /**
+     * @dev Reinitialization available only for test purposes to spare goerli ETH
+     */
+    function initialize(address _insurance) external onlyOwner {
+        // require(_insurance != address(0) && address(insurance) == address(0), "Inicialize only once");
         insurance = _insurance;
     }
 
