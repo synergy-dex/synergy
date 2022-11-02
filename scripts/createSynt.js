@@ -7,7 +7,11 @@ import { abi as oracleAbi } from "artifacts/contracts/Oracle.sol/Oracle.json";
 import { deploySynt, deployMockDataFeed } from "./deploy.js";
 
 async function createSynt(name, symbol, synter, oracle, price) {
-    synt = await deploySynt(name, symbol, synter);
+    synt = await deploySynt(name, symbol);
+
+    init = await synt.initialize(synter.address);
+    await init.wait();
+
     dataFeed = await deployMockDataFeed(name, price);
     await oracle.changeFeed(synt.address, dataFeed.address);
     await synter.addSynt(synt.address, true);
@@ -16,7 +20,11 @@ async function createSynt(name, symbol, synter, oracle, price) {
 }
 
 async function addSynt(name, symbol, synter, oracle, feedAddress) {
-    synt = await deploySynt(name, symbol, synter);
+    synt = await deploySynt(name, symbol);
+
+    init = await synt.initialize(synter.address);
+    await init.wait();
+
     await oracle.changeFeed(synt.address, feedAddress);
     await synter.addSynt(synt.address, true);
     console.log("Synt { %s } set with feed { %s }", name, synt.address, feedAddress);
