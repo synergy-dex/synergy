@@ -278,5 +278,16 @@ describe("Synergy", function () {
 
             expect(await synergy.collateralRatio(alice.address)).to.be.equal(4294967295);
         });
+        it("Should correct calculate collateral ratio", async function () {
+            expect(await synergy.totalShares()).to.be.equal(0);
+            expect(await synergy.collateralRatio(deployer.address)).to.be.equal(0);
+
+            await wEth.mint(deployer.address, ETH.mul(100));
+            await wEth.approve(synergy.address, ETH.mul(100));
+            await synergy.mint(ETH.mul(20000), ETH.mul(100));
+
+            expect(await synergy.totalShares()).to.be.equal(ETH.mul(1));
+            expect(await synergy.collateralRatio(deployer.address)).to.be.equal(5e8);
+        });
     });
 });

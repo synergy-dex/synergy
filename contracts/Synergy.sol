@@ -314,20 +314,24 @@ contract Synergy is Ownable {
     function collateralRatio(address _user) public view returns (uint32 collateralRatio_) {
         UserDebt storage debt = userDebts[_user];
 
-        (uint256 wEthPrice_, uint8 wEthDecimals_) = oracle.getPrice(address(wEth));
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
-        require(rUsdPrice_ != 0, "rUSD price cannot be zero");
-
-        uint256 globalDebt_ = globalDebt();
-        uint256 userDebt_ = (globalDebt_ * debt.shares) / totalShares;
-
-        if (userDebt_ != 0) {
-            collateralRatio_ = uint32(
-                wEthPrice_ * debt.collateral * 10 ** (8 + rUsdDecimals_)
-                    / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
-            );
+        if (totalShares == 0) {
+            collateralRatio_ = 0;
         } else {
-            collateralRatio_ = type(uint32).max;
+            (uint256 wEthPrice_, uint8 wEthDecimals_) = oracle.getPrice(address(wEth));
+            (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+            require(rUsdPrice_ != 0, "rUSD price cannot be zero");
+
+            uint256 globalDebt_ = globalDebt();
+            uint256 userDebt_ = (globalDebt_ * debt.shares) / totalShares;
+
+            if (userDebt_ != 0) {
+                collateralRatio_ = uint32(
+                    wEthPrice_ * debt.collateral * 10 ** (8 + rUsdDecimals_)
+                        / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
+                );
+            } else {
+                collateralRatio_ = type(uint32).max;
+            }
         }
     }
 
