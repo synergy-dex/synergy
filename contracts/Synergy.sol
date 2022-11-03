@@ -156,17 +156,25 @@ contract Synergy is Ownable {
         uint256 amountToBurn_ = userDebt_ >= _amount ? _amount : userDebt_;
         uint256 sharesToBurn_ = (amountToBurn_ * totalShares) / globalDebt_;
 
-        debt.shares -= sharesToBurn_;
-        totalShares -= sharesToBurn_;
+        // get rid of round
+        if (userDebt_ == amountToBurn_) {
+            totalShares -= debt.shares;
+            debt.shares = 0;
+        } else {
+            debt.shares -= sharesToBurn_;
+            totalShares -= sharesToBurn_;
+        }
 
         synter.burnSynt(address(rUsd), msg.sender, amountToBurn_);
 
         // compensation
-        require(msg.sender == insurance.insurances(_insId).user, "Insurance do not belong to the msg.sender");
+        if (_insId != 0) {
+            require(msg.sender == insurance.insurances(_insId).user, "Insurance do not belong to the msg.sender");
 
-        uint256 overpayed_ = amountToBurn_ > debt.minted ? amountToBurn_ - debt.minted : 0;
+            uint256 overpayed_ = amountToBurn_ > debt.minted ? amountToBurn_ - debt.minted : 0;
 
-        insurance.compensate(_insId, overpayed_);
+            insurance.compensate(_insId, overpayed_);
+        }
 
         if (debt.minted > amountToBurn_) {
             unchecked {
@@ -315,11 +323,18 @@ contract Synergy is Ownable {
 
         if (userDebt_ != 0) {
             collateralRatio_ = uint32(
-                wEthPrice_ * debt.collateral * 10 ** (8 + rUsdDecimals_ - wEthDecimals_) / (rUsdPrice_ * userDebt_)
+                wEthPrice_ * debt.collateral * 10 ** (8 + rUsdDecimals_)
+                    / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
             );
         } else {
             collateralRatio_ = type(uint32).max;
         }
+    }
+
+    function userDebt(address _user) public view returns (uint256 userDebt_) {
+        UserDebt storage debt = userDebts[_user];
+        uint256 globalDebt_ = globalDebt();
+        userDebt_ = (globalDebt_ * debt.shares) / totalShares;
     }
 
     /* ================= OWNER FUNCTIONS ================= */
