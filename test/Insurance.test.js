@@ -164,7 +164,7 @@ describe("Insurance", function () {
         await oracle.changeFeed(wEth.address, dataFeed.address);
     });
 
-    describe("StakeRaw", function () {
+    describe("Basic tests", function () {
         it("Should substract RAW", async function () {
             await raw.mintTest(ETH.mul(1000));
             await raw.approve(insurance.address, ETH.mul(1000));

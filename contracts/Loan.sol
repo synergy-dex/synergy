@@ -161,8 +161,8 @@ contract Loan is Ownable {
         uint32 collateralRatio_;
         if (syntPrice_ * loan.borrowed != 0) {
             collateralRatio_ = uint32(
-                rUsdPrice_ * collateralAfterWithdraw_ * 10 ** (8 + syntDecimals_ - rUsdDecimals_)
-                    / (syntPrice_ * loan.borrowed)
+                rUsdPrice_ * collateralAfterWithdraw_ * 10 ** (8 + syntDecimals_)
+                    / (syntPrice_ * loan.borrowed * 10 ** rUsdDecimals_)
             );
         } else {
             collateralRatio_ = type(uint32).max;
@@ -182,7 +182,9 @@ contract Loan is Ownable {
             userLoans[msg.sender][loanIndex_] = userLoans[msg.sender][totalLoans_ - 1];
             userLoans[msg.sender].pop();
             // change index of the last collateral which was moved
-            loans[userLoans[msg.sender][loanIndex_]].loanIndex = loanIndex_;
+            if (userLoans[msg.sender].length != 0) {
+                loans[userLoans[msg.sender][loanIndex_]].loanIndex = loanIndex_;
+            }
             delete loans[_borrowId];
 
             emit LoanClosed(_borrowId);
@@ -253,7 +255,9 @@ contract Loan is Ownable {
             userLoans[msg.sender][loanIndex_] = userLoans[msg.sender][totalLoans_ - 1];
             userLoans[msg.sender].pop();
             // change index of the last collateral which was moved
-            loans[userLoans[msg.sender][loanIndex_]].loanIndex = loanIndex_;
+            if (userLoans[msg.sender].length != 0) {
+                loans[userLoans[msg.sender][loanIndex_]].loanIndex = loanIndex_;
+            }
             delete loans[_borrowId];
 
             emit LoanClosed(_borrowId);
@@ -277,7 +281,8 @@ contract Loan is Ownable {
 
         if (syntPrice_ * loan.borrowed != 0) {
             collateralRatio_ = uint32(
-                rUsdPrice_ * loan.collateral * 10 ** (8 + syntDecimals_ - rUsdDecimals_) / (syntPrice_ * loan.borrowed)
+                rUsdPrice_ * loan.collateral * 10 ** (8 + syntDecimals_)
+                    / (syntPrice_ * loan.borrowed * 10 ** rUsdDecimals_)
             );
         } else {
             collateralRatio_ = type(uint32).max;

@@ -172,8 +172,8 @@ describe("Loan", function () {
         await oracle.changeFeed(wEth.address, dataFeed.address);
     });
 
-    describe("StakeRaw", function () {
-        it.only("Should borrow correctly", async function () {
+    describe("Basic tests", function () {
+        it("Should borrow correctly", async function () {
             // set datafeed for rGLD with price 100$
             dataFeed = await deployMockDataFeed("GOLD", ethers.utils.parseEther("100"));
             await oracle.changeFeed(rGld.address, dataFeed.address);
@@ -194,6 +194,87 @@ describe("Loan", function () {
             expect(await rGld.balanceOf(deployer.address)).to.be.equal(ETH.mul(10));
             expect(await loan.totalShorts(rGld.address)).to.be.equal(ETH.mul(10));
             expect(await loan.collateralRatio(borrowId)).to.be.equal(2e8);
+        });
+        it("Should able to withdraw until collateral ratio", async function () {
+            // set datafeed for rGLD with price 100$
+            dataFeed = await deployMockDataFeed("GOLD", ETH.mul(100));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+
+            // add rGld
+            await synter.addSynt(rGld.address, true);
+
+            expect(await synter.syntList(0)).to.be.equal(rGld.address);
+
+            await rUsd.mint(deployer.address, ETH.mul(2000)); // mint mock synt
+            await rUsd.approve(loan.address, ETH.mul(2000));
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+
+            borrowId = receipt.logs[3].topics[2];
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(2e8);
+
+            await loan.withdraw(borrowId, ETH.mul(500));
+            expect(await rUsd.balanceOf(deployer.address)).to.be.equal(ETH.mul(500));
+            expect(await rGld.balanceOf(deployer.address)).to.be.equal(ETH.mul(10));
+        });
+        it("Should decrease CR", async function () {
+            // set datafeed for rGLD with price 100$
+            dataFeed = await deployMockDataFeed("GOLD", ETH.mul(100));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+
+            // add rGld
+            await synter.addSynt(rGld.address, true);
+
+            expect(await synter.syntList(0)).to.be.equal(rGld.address);
+
+            await rUsd.mint(deployer.address, ETH.mul(2000)); // mint mock synt
+            await rUsd.approve(loan.address, ETH.mul(2000));
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+
+            borrowId = receipt.logs[3].topics[2];
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(2e8);
+
+            await dataFeed.changePrice(ETH.mul(1000)); // pump 10x
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(2e7);
+            // dont repay
+            await expect(loan.withdraw(borrowId, ETH.mul(500))).to.be.revertedWith(
+                "Result ration less than minCollateralRatio"
+            );
+        });
+
+        it("Should repay correctly", async function () {
+            // set datafeed for rGLD with price 100$
+            dataFeed = await deployMockDataFeed("GOLD", ETH.mul(100));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+
+            // add rGld
+            await synter.addSynt(rGld.address, true);
+
+            expect(await synter.syntList(0)).to.be.equal(rGld.address);
+
+            await rUsd.mint(deployer.address, ETH.mul(2000)); // mint mock synt
+            await rUsd.approve(loan.address, ETH.mul(2000));
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+
+            borrowId = receipt.logs[3].topics[2];
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(2e8);
+
+            await dataFeed.changePrice(ETH.mul(10)); // dump 10x
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(2e9);
+
+            await loan.repay(borrowId, ETH.mul(10));
+
+            await loan.withdraw(borrowId, ETH.mul(2000));
+
+            expect(await rUsd.balanceOf(deployer.address)).to.be.equal(ETH.mul(2000));
+            expect(await rGld.balanceOf(deployer.address)).to.be.equal(ETH.mul(0));
         });
     });
 });
