@@ -182,7 +182,7 @@ contract Loan is Ownable {
             userLoans[msg.sender][loanIndex_] = userLoans[msg.sender][totalLoans_ - 1];
             userLoans[msg.sender].pop();
             // change index of the last collateral which was moved
-            if (userLoans[msg.sender].length != 0) {
+            if (userLoans[msg.sender].length != loanIndex_) {
                 loans[userLoans[msg.sender][loanIndex_]].loanIndex = loanIndex_;
             }
             delete loans[_borrowId];
@@ -255,7 +255,7 @@ contract Loan is Ownable {
             userLoans[msg.sender][loanIndex_] = userLoans[msg.sender][totalLoans_ - 1];
             userLoans[msg.sender].pop();
             // change index of the last collateral which was moved
-            if (userLoans[msg.sender].length != 0) {
+            if (userLoans[msg.sender].length != loanIndex_) {
                 loans[userLoans[msg.sender][loanIndex_]].loanIndex = loanIndex_;
             }
             delete loans[_borrowId];

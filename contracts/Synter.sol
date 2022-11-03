@@ -94,7 +94,10 @@ contract Synter is Ownable {
         syntList[syntInd_] = syntList[syntList.length - 1];
         syntList.pop();
 
-        syntInfo[syntList[syntInd_]].syntId = syntInfo[_syntAddress].syntId;
+        // removed != last
+        if (syntList.length != syntInd_) {
+            syntInfo[syntList[syntInd_]].syntId = syntInfo[_syntAddress].syntId;
+        }
 
         delete syntInfo[_syntAddress];
     }
