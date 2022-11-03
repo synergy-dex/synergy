@@ -87,10 +87,10 @@ contract Synergy is Ownable {
         wEth = IERC20(_wEth);
         raw = IERC20(_raw);
         synter = ISynter(_synter);
-        treasury = ITreasury(_treasury);
-        insurance = IInsurance(_insurance);
-        loan = ILoan(_loan);
         oracle = IOracle(_oracle);
+        treasury = ITreasury(_treasury);
+        loan = ILoan(_loan);
+        insurance = IInsurance(_insurance);
     }
 
     /* ================= USER FUNCTIONS ================= */

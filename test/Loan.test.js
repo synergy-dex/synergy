@@ -19,7 +19,7 @@ async function deploySynter() {
 }
 
 async function deploySynt(name, symbol) {
-    const Synt = await ethers.getContractFactory("Synt");
+    const Synt = await ethers.getContractFactory("MockSynt"); // mock synt
     const synt = await Synt.deploy(
         name, // name
         symbol, // symbol
@@ -102,7 +102,10 @@ describe("Loan", function () {
 
         treasury = await deployTreasury();
         synter = await deploySynter(); // need init
+
         rUsd = await deploySynt("Raw USD", "rUSD"); // need init
+        rGld = await deploySynt("Raw GOLD", "rGLD"); // need init
+
         synergy = await deploySynergy(); // need init
         oracle = await deployOracle(); // need init
         loan = await deployLoan(); // need init
@@ -133,6 +136,11 @@ describe("Loan", function () {
         await rUsd.initialize(
             synter.address // _synter
         );
+
+        await rGld.initialize(
+            synter.address // _synter
+        );
+
         await oracle.initialize(
             rUsd.address // _rUsd
         );
@@ -143,6 +151,14 @@ describe("Loan", function () {
             synergy.address, // _synergy
             oracle.address // _oracle
         );
+
+        await loan.initialize(
+            rUsd.address, // ISynt(_rUsd);
+            synter.address, // ISynter(_synter);
+            oracle.address, // IOracle(_oracle);
+            treasury.address // ITreasury(_treasury);
+        );
+
         await raw.initialize(
             insurance.address // _insurance
         );
@@ -157,8 +173,27 @@ describe("Loan", function () {
     });
 
     describe("StakeRaw", function () {
-        it("Should borrow correctly", async function () {
-            await rUsd.connect(synter.address).mint();
+        it.only("Should borrow correctly", async function () {
+            // set datafeed for rGLD with price 100$
+            dataFeed = await deployMockDataFeed("GOLD", ethers.utils.parseEther("100"));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+
+            // add rGld
+            await synter.addSynt(rGld.address, true);
+
+            expect(await synter.syntList(0)).to.be.equal(rGld.address);
+
+            await rUsd.mint(deployer.address, ETH.mul(10000)); // mint mock synt
+            await rUsd.approve(loan.address, ETH.mul(10000));
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+
+            borrowId = receipt.logs[3].topics[2];
+
+            expect(await rUsd.balanceOf(deployer.address)).to.be.equal(ETH.mul(8000));
+            expect(await rGld.balanceOf(deployer.address)).to.be.equal(ETH.mul(10));
+            expect(await loan.totalShorts(rGld.address)).to.be.equal(ETH.mul(10));
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(2e8);
         });
     });
 });

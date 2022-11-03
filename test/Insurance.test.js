@@ -143,6 +143,14 @@ describe("Insurance", function () {
             synergy.address, // _synergy
             oracle.address // _oracle
         );
+
+        await loan.initialize(
+            rUsd.address, // ISynt(_rUsd);
+            synter.address, // ISynter(_synter);
+            treasury.address, // ITreasury(_treasury);
+            oracle.address // IOracle(_oracle);
+        );
+
         await raw.initialize(
             insurance.address // _insurance
         );

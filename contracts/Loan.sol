@@ -62,8 +62,8 @@ contract Loan is Ownable {
 
         rUsd = ISynt(_rUsd);
         synter = ISynter(_synter);
-        treasury = ITreasury(_treasury);
         oracle = IOracle(_oracle);
+        treasury = ITreasury(_treasury);
     }
 
     /* ================= USER FUNCTIONS ================= */
