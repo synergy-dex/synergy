@@ -104,15 +104,6 @@ contract Synergy is Ownable {
         UserDebt storage debt = userDebts[msg.sender];
 
         require(_amountToMint != 0, "Mint amount cannot be zero");
-        (uint256 wEthPrice_, uint8 wEthDecimals_) = oracle.getPrice(address(wEth));
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
-        require(rUsdPrice_ != 0, "rUSD price cannot be zero");
-
-        uint32 collateralRatio_ = uint32(
-            wEthPrice_ * _amountToPledge * 10 ** (8 + rUsdDecimals_)
-                / (rUsdPrice_ * _amountToMint * 10 ** wEthDecimals_)
-        );
-        require(collateralRatio_ >= minCollateralRatio, "Collateral ration less than minCollateralRatio");
 
         uint256 globalDebt_ = globalDebt();
         uint256 shares_ = globalDebt_ == 0 ? 1e18 : (totalShares * _amountToMint) / globalDebt_;
@@ -121,6 +112,9 @@ contract Synergy is Ownable {
         debt.minted += _amountToMint;
         debt.collateral += _amountToPledge;
         debt.shares += shares_;
+
+        uint32 collateralRatio_ = collateralRatio(msg.sender);
+        require(collateralRatio_ >= minCollateralRatio, "Collateral ration less than minCollateralRatio");
 
         wEth.transferFrom(msg.sender, address(this), _amountToPledge);
         synter.mintSynt(address(rUsd), msg.sender, _amountToMint);
@@ -136,7 +130,7 @@ contract Synergy is Ownable {
         UserDebt storage debt = userDebts[msg.sender];
 
         debt.collateral += _amount;
-        rUsd.transferFrom(msg.sender, address(this), _amount);
+        wEth.transferFrom(msg.sender, address(this), _amount);
 
         emit Deposited(_amount);
     }
@@ -195,32 +189,16 @@ contract Synergy is Ownable {
         UserDebt storage debt = userDebts[msg.sender];
         require(_amount != 0, "Withdraw amount cannot be zero");
 
-        (uint256 wEthPrice_, uint8 wEthDecimals_) = oracle.getPrice(address(wEth));
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
-
-        require(rUsdPrice_ != 0, "rUSD price cannot be zero");
-
         // min(debt.collateral, _amount)
         uint256 amountToWithdraw_ = debt.collateral > _amount ? _amount : debt.collateral;
 
-        uint256 globalDebt_ = globalDebt();
-        uint256 userDebt_ = (globalDebt_ * debt.shares) / totalShares;
-
-        uint256 collateralAfterWithdraw_ = debt.collateral - amountToWithdraw_;
-
-        uint32 collateralRatio_;
-        if (userDebt_ != 0) {
-            collateralRatio_ = uint32(
-                wEthPrice_ * collateralAfterWithdraw_ * 10 ** (8 + rUsdDecimals_)
-                    / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
-            );
-        } else {
-            collateralRatio_ = type(uint32).max;
-        }
-
-        require(collateralRatio_ >= minCollateralRatio, "Result ration less than minCollateralRatio");
-
         debt.collateral -= amountToWithdraw_;
+
+        uint32 collateralRatio_ = collateralRatio(msg.sender);
+        require(
+            collateralRatio_ >= minCollateralRatio || collateralRatio_ == 0, "Result ratio less than minCollateralRatio"
+        );
+
         wEth.transfer(msg.sender, amountToWithdraw_);
 
         emit Withdrawed(amountToWithdraw_);
@@ -329,11 +307,18 @@ contract Synergy is Ownable {
                     wEthPrice_ * debt.collateral * 10 ** (8 + rUsdDecimals_)
                         / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
                 );
+            } else if (debt.collateral == 0) {
+                collateralRatio_ = 0;
             } else {
                 collateralRatio_ = type(uint32).max;
             }
         }
     }
+    /**
+     * @notice User debt in rUSD
+     * @param _user address of the user
+     * @return userDebt_ debt in rUSD
+     */
 
     function userDebt(address _user) public view returns (uint256 userDebt_) {
         UserDebt storage debt = userDebts[_user];
@@ -341,6 +326,58 @@ contract Synergy is Ownable {
         userDebt_ = (globalDebt_ * debt.shares) / totalShares;
     }
 
+    /**
+     * @notice Calculate user CR after mint
+     * @dev For front-end purposes
+     */
+    function predictCollateralRatio(address _user, uint256 _amountToMint, uint256 _amountToPledge, bool _increase)
+        public
+        view
+        returns (uint256 collateralRatio_)
+    {
+        UserDebt memory debt = userDebts[_user];
+
+        uint256 globalDebt_ = globalDebt();
+        uint256 shares_ = globalDebt_ == 0 ? 1e18 : (totalShares * _amountToMint) / globalDebt_;
+
+        uint256 newTotalShares_;
+        uint256 newCollateral_;
+        uint256 newShares_;
+        if (_increase) {
+            newTotalShares_ = totalShares + shares_;
+            newCollateral_ = debt.collateral + _amountToPledge;
+            newShares_ = debt.shares + shares_;
+        } else {
+            newTotalShares_ = totalShares - shares_;
+            newCollateral_ = debt.collateral - _amountToPledge;
+            newShares_ = debt.shares - shares_;
+        }
+
+        if (newTotalShares_ == 0) {
+            collateralRatio_ = 0;
+        } else {
+            (uint256 wEthPrice_, uint8 wEthDecimals_) = oracle.getPrice(address(wEth));
+            (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+
+            if (_increase) {
+                globalDebt_ += _amountToMint;
+            } else {
+                globalDebt_ -= _amountToMint;
+            }
+            uint256 userDebt_ = (globalDebt_ * newShares_) / newTotalShares_;
+
+            if (userDebt_ != 0) {
+                collateralRatio_ = uint32(
+                    wEthPrice_ * newCollateral_ * 10 ** (8 + rUsdDecimals_)
+                        / (rUsdPrice_ * userDebt_ * 10 ** wEthDecimals_)
+                );
+            } else if (newCollateral_ == 0) {
+                collateralRatio_ = 0;
+            } else {
+                collateralRatio_ = type(uint32).max;
+            }
+        }
+    }
     /* ================= OWNER FUNCTIONS ================= */
 
     function setMinCollateralRatio(uint32 _minCollateralRatio) external onlyOwner {

@@ -244,7 +244,7 @@ describe("Synergy", function () {
             expect(await synergy.globalDebt()).to.be.equal(ETH.mul(40000));
             expect(await synergy.totalShares()).to.be.equal(ETH.mul(11).div(10));
         });
-        it("Should withdraw correctly", async function () {
+        it("Should burn correctly", async function () {
             await wEth.mint(deployer.address, ETH.mul(100));
             await wEth.mint(alice.address, ETH.mul(10));
             await wEth.approve(synergy.address, ETH.mul(100));
@@ -278,7 +278,7 @@ describe("Synergy", function () {
 
             expect(await synergy.collateralRatio(alice.address)).to.be.equal(4294967295);
         });
-        it("Should correct calculate collateral ratio", async function () {
+        it("Should correctly calculate collateral ratio", async function () {
             expect(await synergy.totalShares()).to.be.equal(0);
             expect(await synergy.collateralRatio(deployer.address)).to.be.equal(0);
 
@@ -288,6 +288,81 @@ describe("Synergy", function () {
 
             expect(await synergy.totalShares()).to.be.equal(ETH.mul(1));
             expect(await synergy.collateralRatio(deployer.address)).to.be.equal(5e8);
+        });
+        it("Should correctly predict collateral ratio on increase", async function () {
+            expect(await synergy.totalShares()).to.be.equal(0);
+            expect(await synergy.collateralRatio(deployer.address)).to.be.equal(0);
+
+            await wEth.mint(deployer.address, ETH.mul(300));
+            await wEth.approve(synergy.address, ETH.mul(300));
+
+            crPredict = await synergy.predictCollateralRatio(
+                deployer.address,
+                ETH.mul(20000),
+                ETH.mul(100),
+                true
+            );
+            await synergy.mint(ETH.mul(20000), ETH.mul(100));
+            expect(await synergy.collateralRatio(deployer.address)).to.be.equal(crPredict);
+
+            crPredict = await synergy.predictCollateralRatio(
+                deployer.address,
+                ETH.mul(20000),
+                ETH.mul(100),
+                true
+            );
+            await synergy.mint(ETH.mul(20000), ETH.mul(100));
+            expect(await synergy.collateralRatio(deployer.address)).to.be.equal(crPredict);
+
+            // on deposit
+            crPredict = await synergy.predictCollateralRatio(
+                deployer.address,
+                0,
+                ETH.mul(100),
+                true
+            );
+            await synergy.deposit(ETH.mul(100));
+            expect(await synergy.collateralRatio(deployer.address)).to.be.equal(crPredict);
+        });
+
+        it("Should correctly predict collateral ratio on decrease", async function () {
+            await wEth.mint(deployer.address, ETH.mul(100));
+            await wEth.mint(alice.address, ETH.mul(20));
+            await wEth.approve(synergy.address, ETH.mul(100));
+            await wEth.connect(alice).approve(synergy.address, ETH.mul(100));
+
+            await synergy.mint(ETH.mul(20000), ETH.mul(100));
+            await synergy.connect(alice).mint(ETH.mul(2000), ETH.mul(10));
+
+            dataFeed = await deployMockDataFeed("GOLD", ETH.mul(100));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+            await synter.addSynt(rGld.address, true); // add rGld
+
+            // =======
+
+            aliceDebt = await synergy.userDebt(alice.address);
+            crPredict = await synergy.predictCollateralRatio(
+                alice.address,
+                aliceDebt.div(2),
+                0,
+                false
+            );
+            await synergy.connect(alice).burn(aliceDebt.div(2), ethers.constants.HashZero);
+            expect(await synergy.collateralRatio(alice.address)).to.be.equal(crPredict);
+
+            // =======
+
+            aliceDebt = await synergy.userDebt(alice.address);
+            crPredict = await synergy.predictCollateralRatio(alice.address, aliceDebt, 0, false);
+            await synergy.connect(alice).burn(aliceDebt, ethers.constants.HashZero);
+            expect(await synergy.collateralRatio(alice.address)).to.be.equal(crPredict);
+
+            // on withdraw
+
+            crPredict = await synergy.predictCollateralRatio(alice.address, 0, ETH.mul(10), false);
+            await synergy.connect(alice).withdraw(ETH.mul(10));
+            expect(await synergy.collateralRatio(alice.address)).to.be.equal(crPredict);
+            expect(crPredict).to.be.equal(0);
         });
     });
 });

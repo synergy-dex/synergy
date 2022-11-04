@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { lazyFunction } = require("hardhat/plugins");
 
 async function deployTreasury() {
     const owner = await ethers.getSigner();
@@ -275,6 +276,116 @@ describe("Loan", function () {
 
             expect(await rUsd.balanceOf(deployer.address)).to.be.equal(ETH.mul(2000));
             expect(await rGld.balanceOf(deployer.address)).to.be.equal(ETH.mul(0));
+        });
+        it("Should correctly predict CR after borrow on increase", async function () {
+            // set datafeed for rGLD with price 100$
+            dataFeed = await deployMockDataFeed("GOLD", ETH.mul(100));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+
+            // add rGld
+            await synter.addSynt(rGld.address, true);
+
+            expect(await synter.syntList(0)).to.be.equal(rGld.address);
+
+            await rUsd.mint(deployer.address, ETH.mul(6000)); // mint mock synt
+            await rUsd.approve(loan.address, ETH.mul(6000));
+
+            crPredict = await loan.predictCollateralRatio(
+                ethers.constants.HashZero,
+                rGld.address,
+                ETH.mul(10),
+                ETH.mul(2000),
+                true
+            );
+
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+            borrowId = receipt.logs[3].topics[2];
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(crPredict);
+
+            crPredict = await loan.predictCollateralRatio(
+                ethers.constants.HashZero,
+                rGld.address,
+                ETH.mul(10),
+                ETH.mul(2000),
+                true
+            );
+
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+            borrowId = receipt.logs[3].topics[2];
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(crPredict);
+
+            // on deposit
+            crPredict = await loan.predictCollateralRatio(
+                borrowId,
+                rGld.address,
+                0,
+                ETH.mul(2000),
+                true
+            );
+
+            await loan.deposit(borrowId, ETH.mul(2000));
+
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(crPredict);
+        });
+
+        it("Should correctly predict CR after borrow on decrease", async function () {
+            // set datafeed for rGLD with price 100$
+            dataFeed = await deployMockDataFeed("GOLD", ETH.mul(100));
+            await oracle.changeFeed(rGld.address, dataFeed.address);
+
+            // add rGld
+            await synter.addSynt(rGld.address, true);
+
+            expect(await synter.syntList(0)).to.be.equal(rGld.address);
+
+            await rUsd.mint(deployer.address, ETH.mul(6000)); // mint mock synt
+            await rUsd.approve(loan.address, ETH.mul(6000));
+
+            tx = await loan.borrow(rGld.address, ETH.mul(10), ETH.mul(2000)); // x2 overcollateral
+            receipt = await tx.wait();
+            borrowId = receipt.logs[3].topics[2];
+
+            crPredict = await loan.predictCollateralRatio(
+                borrowId,
+                rGld.address,
+                ETH.mul(10),
+                0,
+                false
+            );
+            await loan.repay(borrowId, ETH.mul(10));
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(crPredict);
+
+            // ============
+
+            tx = await loan.borrow(rGld.address, ETH.mul(5), ETH.mul(1000)); // x2 overcollateral
+            receipt = await tx.wait();
+            borrowId = receipt.logs[3].topics[2];
+            await dataFeed.changePrice(ETH.mul(10)); // dump 10x
+            crPredict = await loan.predictCollateralRatio(
+                borrowId,
+                rGld.address,
+                ETH.mul(5),
+                0,
+                false
+            );
+            await loan.repay(borrowId, ETH.mul(5));
+            expect(await loan.collateralRatio(borrowId)).to.be.equal(crPredict);
+
+            // on withdraw
+            crPredict = await loan.predictCollateralRatio(
+                borrowId,
+                rGld.address,
+                0,
+                ETH.mul(1000),
+                false
+            );
+            await loan.withdraw(borrowId, ETH.mul(1000));
+            await expect(loan.collateralRatio(borrowId)).to.be.revertedWith("Loan doesn't exist");
+            expect(crPredict).to.be.equal(0);
         });
     });
 });

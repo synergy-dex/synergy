@@ -78,15 +78,6 @@ contract Loan is Ownable {
         require(synter.syntInfo(_syntAddress).shortsEnabled, "Shorts for the synt should be turned on");
         require(_amountToBorrow != 0, "Borrow ammount cannot be zero");
 
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
-        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(address(_syntAddress));
-        require(syntPrice_ != 0, "Synt price cannot be zero");
-
-        uint32 collateralRatio_ = uint32(
-            rUsdPrice_ * _amountToPledge * 10 ** (8 + syntDecimals_ - rUsdDecimals_) / (syntPrice_ * _amountToBorrow)
-        );
-        require(collateralRatio_ >= minCollateralRatio, "Collateral ration less than minCollateralRatio");
-
         bytes32 borrowId_ = keccak256(abi.encode(msg.sender, msg.data, block.number, userLoans[msg.sender].length));
         require(loans[borrowId_].user == address(0), "Cannot duplicate loans");
 
@@ -102,6 +93,9 @@ contract Loan is Ownable {
             treasuryFee: treasuryFee,
             loanIndex: uint32(userLoans[msg.sender].length - 1)
         });
+
+        uint32 collateralRatio_ = collateralRatio(borrowId_);
+        require(collateralRatio_ >= minCollateralRatio, "Collateral ration less than minCollateralRatio");
 
         rUsd.transferFrom(msg.sender, address(this), _amountToPledge);
         synter.increaseShorts(_syntAddress, _amountToBorrow);
@@ -152,25 +146,15 @@ contract Loan is Ownable {
         UserLoan storage loan = loans[_borrowId];
 
         require(loan.user == msg.sender, "Cannot withdraw from someone else's loan");
-        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
-        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(address(loan.syntAddress));
-
-        require(loan.collateral >= _amount, "Cannot withdraw more than pledged");
-        uint256 collateralAfterWithdraw_ = loan.collateral - _amount;
-
-        uint32 collateralRatio_;
-        if (syntPrice_ * loan.borrowed != 0) {
-            collateralRatio_ = uint32(
-                rUsdPrice_ * collateralAfterWithdraw_ * 10 ** (8 + syntDecimals_)
-                    / (syntPrice_ * loan.borrowed * 10 ** rUsdDecimals_)
-            );
-        } else {
-            collateralRatio_ = type(uint32).max;
-        }
-
-        require(collateralRatio_ >= loan.minCollateralRatio, "Result ration less than minCollateralRatio");
 
         loan.collateral -= _amount;
+
+        uint32 collateralRatio_ = collateralRatio(_borrowId);
+        require(
+            collateralRatio_ >= loan.minCollateralRatio || collateralRatio_ == 0,
+            "Result ration less than minCollateralRatio"
+        );
+
         rUsd.transfer(msg.sender, _amount);
 
         emit Withdrawed(_borrowId, _amount);
@@ -284,6 +268,51 @@ contract Loan is Ownable {
                 rUsdPrice_ * loan.collateral * 10 ** (8 + syntDecimals_)
                     / (syntPrice_ * loan.borrowed * 10 ** rUsdDecimals_)
             );
+        } else if (loan.borrowed == 0) {
+            collateralRatio_ = 0;
+        } else {
+            collateralRatio_ = type(uint32).max;
+        }
+    }
+    /**
+     * @notice Calculate user CR after mint
+     * @dev For front-end purposes
+     */
+
+    function predictCollateralRatio(
+        bytes32 _borrowId,
+        address _syntAddress,
+        uint256 _amountToBorrow,
+        uint256 _amountToPledge,
+        bool _increase
+    )
+        public
+        view
+        returns (uint256 collateralRatio_)
+    {
+        UserLoan memory loan = loans[_borrowId];
+
+        uint256 newBorrowed_;
+        uint256 newCollateral_;
+
+        if (_increase) {
+            newBorrowed_ = loan.borrowed + _amountToBorrow;
+            newCollateral_ = loan.collateral + _amountToPledge;
+        } else {
+            newBorrowed_ = loan.borrowed - _amountToBorrow;
+            newCollateral_ = loan.collateral - _amountToPledge;
+        }
+
+        (uint256 rUsdPrice_, uint8 rUsdDecimals_) = oracle.getPrice(address(rUsd));
+        (uint256 syntPrice_, uint8 syntDecimals_) = oracle.getPrice(_syntAddress);
+
+        if (syntPrice_ * newBorrowed_ != 0) {
+            collateralRatio_ = uint32(
+                rUsdPrice_ * newCollateral_ * 10 ** (8 + syntDecimals_)
+                    / (syntPrice_ * newBorrowed_ * 10 ** rUsdDecimals_)
+            );
+        } else if (newBorrowed_ == 0) {
+            collateralRatio_ = 0;
         } else {
             collateralRatio_ = type(uint32).max;
         }

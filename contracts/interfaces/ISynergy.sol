@@ -15,6 +15,10 @@ interface ISynergy {
     function globalDebt() external view returns (uint256);
     function collateralRatio(address user) external view returns (uint32);
     function userDebt(address user) external returns (uint256);
+    function predictCollateralRatio(address user, uint256 amountToMint, uint256 amountToPledge, bool increase)
+        external
+        view
+        returns (uint256);
     function minCollateralRatio() external view returns (uint32);
     function liquidationCollateralRatio() external view returns (uint32);
     function liquidationPenalty() external view returns (uint32);

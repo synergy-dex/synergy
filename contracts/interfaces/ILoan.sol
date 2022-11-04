@@ -19,6 +19,16 @@ interface ILoan {
     function repay(bytes32 borrowId, uint256 amount) external;
     function withdraw(bytes32 borrowId, uint256 amount) external; // withdraw rUSD
     function collateralRatio(bytes32 borrowId) external view returns (uint32);
+    function predictCollateralRatio(
+        bytes32 borrowId,
+        address syntAddress,
+        uint256 amountToBorrow,
+        uint256 amountToPledge,
+        bool increase
+    )
+        external
+        view
+        returns (uint256);
     function minCollateralRatio() external view returns (uint32);
     function liquidationCollateralRatio() external view returns (uint32);
     function liquidationPenalty() external view returns (uint32);
