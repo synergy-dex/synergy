@@ -19,24 +19,30 @@ struct CardURI {
 contract GoldNft is ERC721, Ownable {
     mapping(uint256 => uint256) public goldEquivalent; // nft gold equivalent in OZ (18 decimals)
     ISynt public goldSynt;
+    address public treasury;
     CardURI public cardUri;
+    string private contractUri;
 
     uint256 private lastId;
+    uint256 public immutable mintFee; // 18 decimals
 
-    constructor() ERC721("Gold NFT", "GOLD") {}
+    constructor(uint256 _mintFee) ERC721("Gold NFT", "GOLD") {
+        mintFee = _mintFee;
+    }
 
     /* ================= OWNER FUNCTIONS ================= */
 
     /**
      * @dev Reinitialization available only on test purposes. It will be turned off on release
      */
-    function initialize(address _goldSynt) external onlyOwner {
+    function initialize(address _goldSynt, address _treasury) external onlyOwner {
         // require(_goldSynt != address(0) && address(goldSynt) == address(0), "Initialize only once")
         goldSynt = ISynt(_goldSynt);
+        treasury = _treasury;
     }
 
     /**
-     * @dev Manually set picture of the nft type
+     * @dev Manually set metadata of the nft type
      */
     function setCardUri(uint8 _cardType, string calldata _uri) external onlyOwner {
         if (_cardType == 0) {
@@ -52,6 +58,13 @@ contract GoldNft is ERC721, Ownable {
         }
     }
 
+    /**
+     * @dev Manually set metadata of the contract
+     */
+    function setContractUri(string calldata _uri) external onlyOwner {
+        contractUri = _uri;
+    }
+
     /* ================= USER FUNCTIONS ================= */
 
     /**
@@ -64,7 +77,10 @@ contract GoldNft is ERC721, Ownable {
             "Only 1 or 5 or 10 or 1000+ unce cards available"
         );
 
+        uint256 fee_ = (_ounce * mintFee) / 1e18;
+
         goldSynt.transferFrom(msg.sender, address(this), _ounce);
+        goldSynt.transferFrom(msg.sender, treasury, fee_);
         goldEquivalent[lastId] = _ounce;
         _safeMint(msg.sender, lastId++);
     }
@@ -98,5 +114,12 @@ contract GoldNft is ERC721, Ownable {
         } else {
             return cardUri.theCube;
         }
+    }
+
+    /**
+     * @notice Return contract metadata uri
+     */
+    function contractURI() public view returns (string memory) {
+        return contractUri;
     }
 }
