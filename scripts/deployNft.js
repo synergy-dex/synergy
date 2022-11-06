@@ -10,6 +10,15 @@ async function main() {
 
     await goldNft.initialize(config.RGLD, config.TREASURY);
 
+    await goldNft.setCardUri(0, "ipfs://QmcwJeiVieJFe5GCn1KwmxPYu2MEcH8RSZDGpHs4z4Ng2L/coin.json");
+    await goldNft.setCardUri(
+        1,
+        "ipfs://QmcwJeiVieJFe5GCn1KwmxPYu2MEcH8RSZDGpHs4z4Ng2L/nugget.json"
+    );
+    await goldNft.setCardUri(2, "ipfs://QmcwJeiVieJFe5GCn1KwmxPYu2MEcH8RSZDGpHs4z4Ng2L/ingot.json");
+    await goldNft.setCardUri(3, "ipfs://QmcwJeiVieJFe5GCn1KwmxPYu2MEcH8RSZDGpHs4z4Ng2L/cube.json");
+    await goldNft.setContractUri("ipfs://QmQrhZMiJq6xcGwJft9jD2WUvM8v4AtP1diZL8Z3aP8ypo");
+
     console.log("Gold NFT deployed at { %s }", goldNft.address);
 }
 
