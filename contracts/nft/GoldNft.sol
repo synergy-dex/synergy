@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "solmate/src/tokens/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/ISynt.sol";
 
@@ -90,7 +90,11 @@ contract GoldNft is ERC721, Ownable {
      * @param _tokenId token id
      */
     function burnCard(uint256 _tokenId) external {
-        require(_isApprovedOrOwner(_msgSender(), _tokenId), "Only owner or approved address can burn");
+        address owner_ = _ownerOf[_tokenId];
+        require(
+            msg.sender == owner_ || isApprovedForAll[owner_][msg.sender] || getApproved[_tokenId] == msg.sender,
+            "Only owner or approved address can burn"
+        );
 
         goldSynt.transfer(ownerOf(_tokenId), goldEquivalent[_tokenId]);
         _burn(_tokenId);
