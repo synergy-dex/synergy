@@ -27,7 +27,7 @@ contract Synergy is Ownable {
     IOracle public oracle; // oracle to get synt prices
     ITreasury public treasury; // treasury address to collect rewards
     ILoan public loan; // Loan contract which contains shorts
-    IInsurance insurance; // Insurance contract
+    IInsurance public insurance; // Insurance contract
     uint32 public minCollateralRatio; // min collateral ration e.g. 1.2 (8 decimals)
     uint32 public liquidationCollateralRatio; // collateral ratio to enough to liquidate e.g. 1.2 (8 decimals)
     uint32 public liquidationPenalty; // rewards for liquidation e.g 0.1 (8 decimals)
